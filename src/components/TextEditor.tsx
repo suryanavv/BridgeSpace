@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { UsersIcon, Loader2Icon, RefreshCwIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/utils/supabase';
+import CopyButton from '@/components/ui/copy-button';
 
 export const TextEditor = () => {
   const [content, setContent] = useState('');
@@ -75,7 +76,6 @@ export const TextEditor = () => {
     setContent(newContent);
     
     try {
-      // Only save if content has changed
       if (newContent === lastSavedContent) return;
 
       setIsSaving(true);
@@ -148,13 +148,18 @@ export const TextEditor = () => {
         </div>
       </div>
 
-      <div className="flex-1 p-4 min-h-0">
+      <div className="flex-1 p-4 min-h-0 relative">
         <textarea
           className="w-full h-full p-4 border rounded-lg bg-gray-50 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none resize-none font-mono"
           placeholder="Start typing here..."
           value={content}
           onChange={(e) => setContent(e.target.value)}
         />
+        {content && (
+          <div className="absolute top-8 right-8">
+            <CopyButton textToCopy={content} />
+          </div>
+        )}
       </div>
     </div>
   );
