@@ -22,6 +22,46 @@ interface FileItem {
   created_at: string;
 }
 
+// Add this UUID generation function at the top of the file
+function generateUUID() {
+  // Check if native crypto.randomUUID is available
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+
+  // Fallback implementation
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    const r = Math.random() * 16 | 0;
+    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+}
+
+// Add these utility functions at the top
+const ALLOWED_ORIGINS = [
+  'http://localhost:3000',
+  'http://192.168.42.93:8080'
+];
+
+function isValidOrigin(origin: string) {
+  return ALLOWED_ORIGINS.includes(origin);
+}
+
+// Add message handling function
+function handleMessage(event: MessageEvent) {
+  if (!isValidOrigin(event.origin)) {
+    console.warn('Received message from unauthorized origin:', event.origin);
+    return;
+  }
+  // Handle the message
+  try {
+    const data = JSON.parse(event.data);
+    // Add your message handling logic here
+  } catch (error) {
+    console.error('Error processing message:', error);
+  }
+}
+
 export const FileShare = () => {
   const [files, setFiles] = useState<FileItem[]>([]);
   const [isDragging, setIsDragging] = useState(false);
@@ -80,6 +120,16 @@ export const FileShare = () => {
       channel.unsubscribe();
     };
   }, [supabase]);
+
+  useEffect(() => {
+    // Add message event listener
+    window.addEventListener('message', handleMessage);
+    
+    // Cleanup
+    return () => {
+      window.removeEventListener('message', handleMessage);
+    };
+  }, []);
 
   const loadFiles = async () => {
     try {
@@ -202,12 +252,28 @@ export const FileShare = () => {
   };
 
   const handleFiles = async (uploadedFiles: File[]) => {
+    if (!uploadedFiles.length) {
+      toast.error('No files selected');
+      return;
+    }
+
+    if (fileCount + uploadedFiles.length > MAX_FILES) {
+      toast.error(`Cannot upload more than ${MAX_FILES} files. Please delete some files first.`);
+      return;
+    }
+
     setIsSharing(true);
     try {
       const newFiles = await Promise.all(uploadedFiles.map(async (file) => {
-        const fileId = crypto.randomUUID();
-        const fileExt = file.name.split('.').pop();
+        const fileId = generateUUID();
+        const fileExt = file.name.split('.').pop() || '';
         const filePath = `${fileId}.${fileExt}`;
+
+        // Add file size check
+        const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB
+        if (file.size > MAX_FILE_SIZE) {
+          throw new Error(`File ${file.name} is too large. Maximum size is 100MB`);
+        }
 
         const { error: uploadError } = await supabase.storage
           .from('shared-files')
@@ -237,10 +303,10 @@ export const FileShare = () => {
       }));
 
       setFiles(prev => [...newFiles, ...prev]);
-      toast.success('Files shared successfully!');
-    } catch (error) {
+      toast.success(`Successfully shared ${newFiles.length} file(s)`);
+    } catch (error: any) {
       console.error('Error sharing files:', error);
-      toast.error('Failed to share files');
+      toast.error(error.message || 'Failed to share files');
     } finally {
       setIsSharing(false);
     }
