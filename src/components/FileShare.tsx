@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { FileIcon, ImageIcon, FileTextIcon, Loader2Icon, RefreshCwIcon, DownloadIcon, TrashIcon } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { FileIcon, ImageIcon, FileTextIcon, Loader2Icon, RefreshCwIcon, DownloadIcon, TrashIcon, XIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/utils/supabase';
 import { format, addDays, formatDistanceToNow } from 'date-fns';
@@ -13,6 +13,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { getCurrentNetworkId, initNetworkInfo } from '@/utils/supabase';
+import { uploadFile } from '@/utils/fileHelpers';
+import { NetworkUtils } from '@/utils/network';
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { cn } from "@/lib/utils"
 
 interface FileItem {
   id: string;
@@ -20,16 +25,13 @@ interface FileItem {
   type: string;
   url: string;
   created_at: string;
+  network_id?: string;
 }
 
-// Add this UUID generation function at the top of the file
 function generateUUID() {
-  // Check if native crypto.randomUUID is available
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
     return crypto.randomUUID();
   }
-
-  // Fallback implementation
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
     const r = Math.random() * 16 | 0;
     const v = c === 'x' ? r : (r & 0x3 | 0x8);
@@ -37,29 +39,144 @@ function generateUUID() {
   });
 }
 
-// Add these utility functions at the top
 const ALLOWED_ORIGINS = [
   'http://localhost:3000',
-  'http://192.168.42.93:8080'
-];
+  'https://bridgespace.vercel.app'
+] as const;
 
-function isValidOrigin(origin: string) {
-  return ALLOWED_ORIGINS.includes(origin);
+const URL_PATTERN = new RegExp(
+  '^https?:\\/\\/' + // Protocol
+  '([a-zA-Z0-9-]+\\.)*' + // Subdomains
+  '[a-zA-Z0-9-]+\\.' + // Domain
+  '[a-zA-Z]{2,}' + // TLD
+  '(\\/[^\\s]*)?$' // Path
+);
+
+function isValidOrigin(origin: string): boolean {
+  try {
+    const url = new URL(origin);
+    return ALLOWED_ORIGINS.includes(url.origin as typeof ALLOWED_ORIGINS[number]);
+  } catch {
+    return false;
+  }
 }
 
-// Add message handling function
+interface MessageData {
+  type: string;
+  payload: unknown;
+}
+
 function handleMessage(event: MessageEvent) {
   if (!isValidOrigin(event.origin)) {
-    console.warn('Received message from unauthorized origin:', event.origin);
+    console.warn('Blocked message from unauthorized origin:', event.origin);
     return;
   }
-  // Handle the message
+
   try {
-    const data = JSON.parse(event.data);
-    // Add your message handling logic here
+    const data = JSON.parse(event.data) as MessageData;
+    
+    if (!data || typeof data !== 'object' || !('type' in data)) {
+      throw new Error('Invalid message format');
+    }
+
+    switch (data.type) {
+      default:
+        console.warn('Unhandled message type:', data.type);
+    }
   } catch (error) {
     console.error('Error processing message:', error);
   }
+}
+
+function sanitizeFileName(fileName: string): string {
+  const name = fileName.replace(/^.*[\\\/]/, '');
+  
+  return name
+    .replace(/[^\w\s.-]/g, '_')
+    .replace(/\s+/g, '_')
+    .replace(/_{2,}/g, '_')
+    .replace(/^[.-]+|[.-]+$/g, '')
+    .substring(0, 255);
+}
+
+const downloadFile = async (url: string, fileName: string) => {
+  let blobUrl: string | null = null;
+  
+  try {
+    if (!URL_PATTERN.test(url)) {
+      throw new Error('Invalid file URL');
+    }
+
+    const fileUrl = new URL(url);
+    const isAllowedDomain = ALLOWED_ORIGINS.some(origin => 
+      fileUrl.origin === new URL(origin).origin
+    );
+
+    if (!isAllowedDomain) {
+      throw new Error('File URL not allowed');
+    }
+
+    const sanitizedFileName = sanitizeFileName(fileName);
+
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const contentType = response.headers.get('content-type');
+    if (!contentType) {
+      throw new Error('No content type specified');
+    }
+
+    const blob = await response.blob();
+    blobUrl = window.URL.createObjectURL(blob);
+    
+    const link = document.createElement('a');
+    link.href = blobUrl;
+    link.download = sanitizedFileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  } catch (error) {
+    console.error('Download error:', error);
+    toast.error('Failed to download file: ' + (error instanceof Error ? error.message : 'Unknown error'));
+  } finally {
+    if (blobUrl) {
+      window.URL.revokeObjectURL(blobUrl);
+    }
+  }
+};
+
+const MAX_RETRIES = 3;
+const RETRY_DELAY = 1000;
+
+const retryOperation = async <T,>(
+  operation: () => Promise<T>,
+  retries = MAX_RETRIES,
+  delay = RETRY_DELAY
+): Promise<T> => {
+  try {
+    return await operation();
+  } catch (error) {
+    if (retries > 0) {
+      await new Promise(resolve => setTimeout(resolve, delay));
+      return retryOperation(operation, retries - 1, delay);
+    }
+    throw error;
+  }
+};
+
+// Add new interfaces for tracking upload progress
+interface UploadProgress {
+  id: string;
+  fileName: string;
+  progress: number;
+  status: 'uploading' | 'completed' | 'failed';
+}
+
+interface FileWithHash {
+  file: File;
+  hash: string;
 }
 
 export const FileShare = () => {
@@ -67,13 +184,18 @@ export const FileShare = () => {
   const [isDragging, setIsDragging] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [isRefreshing, setIsRefreshing] = useState(false);
   const [deletingFiles, setDeletingFiles] = useState<Set<string>>(new Set());
   const [fileToDelete, setFileToDelete] = useState<FileItem | null>(null);
   const [fileCount, setFileCount] = useState<number>(0);
   const [showDeleteAllDialog, setShowDeleteAllDialog] = useState(false);
   const [isDeletingAll, setIsDeletingAll] = useState(false);
+  const [networkId, setNetworkId] = useState<string | null>(null);
   const MAX_FILES = 50;
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const MAX_CONCURRENT_UPLOADS = 3; // Maximum concurrent uploads allowed
+  const [uploadProgress, setUploadProgress] = useState<Record<string, UploadProgress>>({});
+  const [uploadQueue, setUploadQueue] = useState<FileWithHash[]>([]);
+  const activeUploads = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     loadFiles();
@@ -92,7 +214,7 @@ export const FileShare = () => {
       .subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      channel.unsubscribe();
     };
   }, []);
 
@@ -106,7 +228,6 @@ export const FileShare = () => {
 
     getFileCount();
     
-    // Subscribe to changes
     const channel = supabase
       .channel('file_changes')
       .on(
@@ -122,108 +243,117 @@ export const FileShare = () => {
   }, [supabase]);
 
   useEffect(() => {
-    // Add message event listener
     window.addEventListener('message', handleMessage);
-    
-    // Cleanup
     return () => {
       window.removeEventListener('message', handleMessage);
     };
   }, []);
 
+  useEffect(() => {
+    const init = async () => {
+      try {
+        const detectedNetworkId = await NetworkUtils.detectNetwork();
+        setNetworkId(detectedNetworkId);
+      } catch (error) {
+        console.error('Error initializing network:', error);
+        toast.error("Failed to initialize network", {
+          description: "Could not detect your network. Please try again."
+        });
+      }
+    };
+    init();
+  }, []);
+
   const loadFiles = async () => {
     try {
       setIsLoading(true);
-      
-      // Get files from database
-      const { data: dbFiles, error: dbError } = await supabase
-        .from('shared_files')
-        .select('*')
-        .order('created_at', { ascending: false });
+      const currentNetworkId = networkId || await NetworkUtils.detectNetwork();
+      if (!currentNetworkId) {
+        toast.error("Network not identified");
+        return;
+      }
+
+      // Retry database operations
+      const { data: dbFiles, error: dbError } = await retryOperation(async () => {
+        return await supabase
+          .from('shared_files')
+          .select('*')
+          .eq('network_id', currentNetworkId)
+          .order('created_at', { ascending: false });
+      });
 
       if (dbError) throw dbError;
 
-      // Get files from storage
-      const { data: storageFiles, error: storageError } = await supabase.storage
-        .from('shared-files')
-        .list();
+      // Check for file locks to handle simultaneous uploads
+      const accessibleFiles = await Promise.all(
+        (dbFiles || []).map(async (file) => {
+          try {
+            // Check file lock
+            const { data: lockData } = await supabase
+              .from('file_locks')
+              .select('*')
+              .eq('file_id', file.id)
+              .single();
 
-      if (storageError) throw storageError;
+            // If file is locked and lock is recent (within last minute)
+            if (lockData && (Date.now() - new Date(lockData.locked_at).getTime()) < 60000) {
+              return null; // Skip this file
+            }
 
-      // Only keep files that exist in both database and storage
-      const validFiles = (dbFiles || []).filter(dbFile => 
-        storageFiles?.some(storageFile => 
-          storageFile.name.startsWith(dbFile.id)
-        )
+            const hasAccess = await NetworkUtils.validateFileAccess(file.network_id);
+            return hasAccess ? file : null;
+          } catch (error) {
+            console.error('Error validating file access:', error);
+            return null;
+          }
+        })
       );
 
-      setFiles(validFiles);
+      setFiles(accessibleFiles.filter((file): file is FileItem => file !== null));
     } catch (error) {
       console.error('Error loading files:', error);
-      toast.error('Failed to load shared files');
+      toast.error("Failed to load shared files");
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleRefresh = async () => {
-    try {
-      setIsRefreshing(true);
-      const { data, error } = await supabase
-        .from('shared_files')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-
-      if (JSON.stringify(data) !== JSON.stringify(files)) {
-        setFiles(data || []);
-        toast.success('Files refreshed successfully');
-      } else {
-        toast.info('Files are already up to date');
-      }
-    } catch (error) {
-      console.error('Error refreshing files:', error);
-      toast.error('Failed to refresh files');
-    } finally {
-      setIsRefreshing(false);
-    }
-  };
-
   const handleDelete = async (file: FileItem) => {
     try {
+      const currentNetworkId = networkId || await NetworkUtils.detectNetwork();
+      if (!currentNetworkId) {
+        toast.error('Network not identified');
+        return;
+      }
+
       setDeletingFiles(prev => new Set(prev).add(file.id));
       
-      // Delete from database first
       const { error: dbError } = await supabase
         .from('shared_files')
         .delete()
-        .eq('id', file.id);
+        .eq('id', file.id)
+        .eq('network_id', currentNetworkId);
 
       if (dbError) {
         console.error('Database deletion error:', dbError);
         throw new Error(`Failed to delete from database: ${dbError.message}`);
       }
 
-      // Then delete from storage
       const { error: storageError } = await supabase.storage
         .from('shared-files')
         .remove([`${file.id}.${file.name.split('.').pop()}`]);
 
       if (storageError) {
         console.error('Storage deletion error:', storageError);
-        // Log error but continue since database record is deleted
         toast.warning('Note: File might persist in storage');
       }
 
-      // Update local state
       setFiles(prev => prev.filter(f => f.id !== file.id));
       toast.success('File deleted successfully');
 
     } catch (error) {
       console.error('Error deleting file:', error);
       toast.error('Failed to delete file. Please try again.');
-      // Refresh to show current state
       loadFiles();
     } finally {
       setDeletingFiles(prev => {
@@ -251,9 +381,31 @@ export const FileShare = () => {
     handleFiles(droppedFiles);
   };
 
+  // Add function to calculate file hash for deduplication
+  const calculateFileHash = async (file: File): Promise<string> => {
+    const buffer = await file.arrayBuffer();
+    const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  };
+
+  // Add function to check for duplicate files
+  const isDuplicateFile = async (file: File): Promise<boolean> => {
+    const hash = await calculateFileHash(file);
+    const { data } = await supabase
+      .from('shared_files')
+      .select('id')
+      .eq('file_hash', hash)
+      .eq('network_id', networkId)
+      .single();
+    
+    return !!data;
+  };
+
+  // Update handleFiles function to include deduplication and progress
   const handleFiles = async (uploadedFiles: File[]) => {
     if (!uploadedFiles.length) {
-      toast.error('No files selected');
+      toast.error("No files selected");
       return;
     }
 
@@ -263,52 +415,105 @@ export const FileShare = () => {
     }
 
     setIsSharing(true);
+
     try {
-      const newFiles = await Promise.all(uploadedFiles.map(async (file) => {
-        const fileId = generateUUID();
-        const fileExt = file.name.split('.').pop() || '';
-        const filePath = `${fileId}.${fileExt}`;
-
-        // Add file size check
-        const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB
-        if (file.size > MAX_FILE_SIZE) {
-          throw new Error(`File ${file.name} is too large. Maximum size is 100MB`);
+      // Process files for deduplication
+      const filesWithHash: FileWithHash[] = [];
+      for (const file of uploadedFiles) {
+        const hash = await calculateFileHash(file);
+        const isDuplicate = await isDuplicateFile(file);
+        
+        if (isDuplicate) {
+          toast.warning(`File "${file.name}" already exists`);
+          continue;
         }
+        
+        filesWithHash.push({ file, hash });
+      }
 
-        const { error: uploadError } = await supabase.storage
-          .from('shared-files')
-          .upload(filePath, file);
-
-        if (uploadError) throw uploadError;
-
-        const { data: { publicUrl } } = supabase.storage
-          .from('shared-files')
-          .getPublicUrl(filePath);
-
-        const fileItem = {
-          id: fileId,
-          name: file.name,
-          type: file.type,
-          url: publicUrl,
-          created_at: new Date().toISOString(),
-        };
-
-        const { error: dbError } = await supabase
-          .from('shared_files')
-          .insert([fileItem]);
-
-        if (dbError) throw dbError;
-
-        return fileItem;
-      }));
-
-      setFiles(prev => [...newFiles, ...prev]);
-      toast.success(`Successfully shared ${newFiles.length} file(s)`);
-    } catch (error: any) {
-      console.error('Error sharing files:', error);
-      toast.error(error.message || 'Failed to share files');
+      setUploadQueue(prev => [...prev, ...filesWithHash]);
+      processUploadQueue();
+    } catch (error) {
+      console.error('Error processing files:', error);
+      toast.error('Failed to process files');
     } finally {
       setIsSharing(false);
+    }
+  };
+
+  // Add function to process upload queue
+  const processUploadQueue = async () => {
+    if (activeUploads.current.size >= MAX_CONCURRENT_UPLOADS) return;
+
+    const currentQueue = [...uploadQueue];
+    if (currentQueue.length === 0) return;
+
+    const { file, hash } = currentQueue[0];
+    setUploadQueue(currentQueue.slice(1));
+
+    const uploadId = generateUUID();
+    activeUploads.current.add(uploadId);
+
+    setUploadProgress(prev => ({
+      ...prev,
+      [uploadId]: {
+        id: uploadId,
+        fileName: file.name,
+        progress: 0,
+        status: 'uploading'
+      }
+    }));
+
+    try {
+      const currentNetworkId = networkId || await NetworkUtils.detectNetwork();
+      if (!currentNetworkId) throw new Error('Network not identified');
+
+      const sanitizedFile = new File([file], sanitizeFileName(file.name), {
+        type: file.type,
+        lastModified: file.lastModified
+      });
+
+      // Upload with progress tracking
+      const result = await uploadFileWithProgress(sanitizedFile, currentNetworkId, hash, (progress) => {
+        setUploadProgress(prev => ({
+          ...prev,
+          [uploadId]: { ...prev[uploadId], progress }
+        }));
+      });
+
+      if (result.success) {
+        setUploadProgress(prev => ({
+          ...prev,
+          [uploadId]: { ...prev[uploadId], status: 'completed', progress: 100 }
+        }));
+
+        // Cleanup successful upload after animation
+        setTimeout(() => {
+          setUploadProgress(prev => {
+            const { [uploadId]: _, ...rest } = prev;
+            return rest;
+          });
+        }, 2000);
+      } else {
+        throw new Error(result.error);
+      }
+    } catch (error) {
+      console.error(`Upload failed for ${file.name}:`, error);
+      setUploadProgress(prev => ({
+        ...prev,
+        [uploadId]: { ...prev[uploadId], status: 'failed' }
+      }));
+
+      // Cleanup failed upload after showing error
+      setTimeout(() => {
+        setUploadProgress(prev => {
+          const { [uploadId]: _, ...rest } = prev;
+          return rest;
+        });
+      }, 5000);
+    } finally {
+      activeUploads.current.delete(uploadId);
+      processUploadQueue(); // Process next in queue
     }
   };
 
@@ -322,45 +527,55 @@ export const FileShare = () => {
     try {
       setIsDeletingAll(true);
       
-      // First, get all file IDs and names
+      const currentNetworkId = networkId || await NetworkUtils.detectNetwork();
+      if (!currentNetworkId) {
+        throw new Error('Network not identified');
+      }
+
+      // Get all files for current network
       const { data: files, error: fetchError } = await supabase
         .from('shared_files')
-        .select('id, name');
+        .select('id, name, type, url')
+        .eq('network_id', currentNetworkId);
       
-      if (fetchError) {
-        throw fetchError;
-      }
+      if (fetchError) throw fetchError;
 
       if (!files || files.length === 0) {
         toast.info('No files to delete');
         return;
       }
 
-      // Delete from storage first
-      for (const file of files) {
-        const { error: storageError } = await supabase.storage
-          .from('shared-files')
-          .remove([`${file.id}.*`]);
+      // Delete files from storage first
+      const storagePromises = files.map(async (file) => {
+        try {
+          const fileExtension = file.name.split('.').pop();
+          const storageFileName = `${file.id}.${fileExtension}`;
+          
+          const { error: storageError } = await supabase.storage
+            .from('shared-files')
+            .remove([storageFileName]);
 
-        if (storageError) {
-          console.error(`Error deleting file ${file.name} from storage:`, storageError);
+          if (storageError) {
+            console.warn(`Warning: Failed to delete ${file.name} from storage:`, storageError);
+          }
+        } catch (error) {
+          console.warn(`Warning: Error processing ${file.name}:`, error);
         }
-      }
+      });
 
-      // Delete from database in batches
-      for (const file of files) {
-        const { error: dbError } = await supabase
-          .from('shared_files')
-          .delete()
-          .eq('id', file.id);
+      // Continue even if some storage deletions fail
+      await Promise.allSettled(storagePromises);
 
-        if (dbError) {
-          console.error(`Error deleting file ${file.name} from database:`, dbError);
-        }
-      }
+      // Delete database records
+      const { error: dbError } = await supabase
+        .from('shared_files')
+        .delete()
+        .eq('network_id', currentNetworkId);
+
+      if (dbError) throw dbError;
 
       toast.success(`Successfully deleted ${files.length} files`);
-      loadFiles(); // Refresh the file list
+      loadFiles();
     } catch (error: any) {
       console.error('Error deleting all files:', error);
       toast.error(error.message || 'Failed to delete all files');
@@ -369,6 +584,46 @@ export const FileShare = () => {
       setShowDeleteAllDialog(false);
     }
   };
+
+  const handleFileUpload = async (file: File) => {
+    try {
+      if (!file) return;
+      
+      const currentNetworkId = networkId || await NetworkUtils.detectNetwork();
+      if (!currentNetworkId) {
+        toast.error('Network not identified');
+        return;
+      }
+
+      // Keep only file size validation
+      const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB
+      if (file.size > MAX_FILE_SIZE) {
+        toast.error('File too large. Maximum size is 100MB');
+        return;
+      }
+
+      setIsSharing(true);
+      // Rest of your upload logic...
+    } catch (error) {
+      console.error('Upload error:', error);
+      toast.error('Failed to upload file');
+    } finally {
+      setIsSharing(false);
+    }
+  };
+
+  // Add cleanup on unmount
+  useEffect(() => {
+    return () => {
+      // Cleanup any temporary files or uploads
+      Object.keys(uploadProgress).forEach(uploadId => {
+        if (uploadProgress[uploadId].status === 'uploading') {
+          // Cancel upload if possible
+          // Cleanup temporary files
+        }
+      });
+    };
+  }, []);
 
   if (isLoading) {
     return (
@@ -385,70 +640,58 @@ export const FileShare = () => {
   }
 
   return (
-    <div className="h-full flex flex-col bg-white rounded-lg shadow-sm">
-      <div className="flex items-center justify-between px-4 py-3 border-b">
+    <div className="h-[calc(100vh-7rem)] flex flex-col bg-white rounded-lg shadow-sm">
+      <div className="flex items-center justify-between px-2 py-3 border-b">
         <div className="flex items-center space-x-2">
           <h2 className="text-lg font-semibold">Files</h2>
-        </div>
-        <div className="flex items-center space-x-2">
-          <button
-            onClick={handleRefresh}
-            className="p-1 hover:bg-gray-100 rounded-full transition-colors"
-            disabled={isRefreshing}
-            title="Refresh files"
-          >
-            <RefreshCwIcon 
-              className={`w-4 h-4 text-gray-500 ${isRefreshing ? 'animate-spin' : 'hover:text-gray-700'}`}
-            />
-          </button>
         </div>
       </div>
 
       <div className="flex-1 p-4 flex flex-col space-y-4 overflow-hidden">
-        {/* Upload Section - Always visible */}
-        <div
-          className={`p-6 border-2 border-dashed rounded-lg ${
-            isDragging ? 'border-primary bg-blue-50' : 'border-gray-300'
-          }`}
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          onDrop={handleDrop}
-        >
-          <div className="space-y-2">
-            {fileCount >= MAX_FILES && (
-              <div className="text-red-500 text-sm mb-4">
-                Maximum file limit reached. Please delete some files before uploading more.
-              </div>
-            )}
-            
-            <div className="flex items-center gap-4 mb-4">
-              <label className="inline-flex items-center px-4 py-2 bg-primary text-white rounded-lg cursor-pointer hover:bg-primary/90 transition-colors">
-                <span className="mr-2">Choose Files</span>
-                <input
-                  type="file"
-                  multiple
-                  accept="*/*"
-                  onChange={(e) => e.target.files && handleFiles(Array.from(e.target.files))}
-                  disabled={fileCount >= MAX_FILES}
-                  className="hidden"
-                />
-              </label>
+        <div className="flex-none">
+          <div
+            className={`p-6 border-2 border-dashed rounded-lg ${
+              isDragging ? 'border-primary bg-blue-50' : 'border-gray-300'
+            }`}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+          >
+            <div className="space-y-2">
+              {fileCount >= MAX_FILES && (
+                <div className="text-red-500 text-sm mb-4">
+                  Maximum file limit reached. Please delete some files before uploading more.
+                </div>
+              )}
               
-              <span className="text-gray-400 text-sm">
-                or drag and drop multiple files here
-              </span>
-            </div>
+              <div className="flex items-center gap-4 mb-4">
+                <label className="inline-flex items-center px-4 py-2 bg-primary text-white rounded-lg cursor-pointer hover:bg-primary/90 transition-colors">
+                  <span className="mr-2">Choose Files</span>
+                  <input
+                    type="file"
+                    multiple
+                    accept="*/*"
+                    onChange={(e) => e.target.files && handleFiles(Array.from(e.target.files))}
+                    disabled={fileCount >= MAX_FILES}
+                    className="hidden"
+                  />
+                </label>
+                
+                <span className="text-gray-400 text-sm">
+                  or drag and drop multiple files here
+                </span>
+              </div>
 
-            <p className="text-xs text-gray-400">
-              You can select multiple files at once
-            </p>
+              <p className="text-xs text-gray-400">
+                You can select multiple files at once
+              </p>
+            </div>
           </div>
         </div>
 
-        {/* Files List Section */}
         {files.length > 0 && (
-          <div className="flex-1 overflow-y-auto">
-            <div className="sticky top-0 bg-white px-2 py-3 border-b flex items-center justify-between">
+          <div className="flex-1 flex flex-col min-h-0">
+            <div className="flex-none sticky top-0 bg-white px-2 py-2 border-b flex items-center justify-between">
               <span className="text-sm text-gray-600">
                 {files.length}/{MAX_FILES} files
               </span>
@@ -470,7 +713,7 @@ export const FileShare = () => {
                 )}
               </button>
             </div>
-            <div className="divide-y">
+            <div className="flex-1 overflow-y-auto">
               {files.map((file) => (
                 <div
                   key={file.id}
@@ -492,9 +735,11 @@ export const FileShare = () => {
                   </div>
                   <div className="flex items-center space-x-2 ml-4">
                     <a
-                      href={file.url}
-                      download={file.name}
-                      className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded transition-colors"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        downloadFile(file.url, file.name);
+                      }}
+                      className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded transition-colors cursor-pointer"
                       title="Download file"
                     >
                       <DownloadIcon className="w-5 h-5" />
@@ -528,7 +773,6 @@ export const FileShare = () => {
           </div>
         )}
 
-        {/* Delete Confirmation Dialog */}
         <AlertDialog open={fileToDelete !== null} onOpenChange={() => setFileToDelete(null)}>
           <AlertDialogContent>
             <AlertDialogHeader>
@@ -576,7 +820,56 @@ export const FileShare = () => {
             </div>
           </div>
         )}
+
+        {/* Add upload progress indicators */}
+        {Object.values(uploadProgress).length > 0 && (
+          <div className="fixed bottom-4 right-4 space-y-2">
+            {Object.values(uploadProgress).map((upload) => (
+              <div
+                key={upload.id}
+                className={cn(
+                  "p-4 rounded-lg shadow-lg max-w-sm w-full",
+                  upload.status === 'completed' ? 'bg-green-50' : 
+                  upload.status === 'failed' ? 'bg-red-50' : 'bg-white'
+                )}
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-medium truncate">{upload.fileName}</span>
+                  {upload.status === 'failed' && (
+                    <button
+                      onClick={() => {
+                        setUploadProgress(prev => {
+                          const { [upload.id]: _, ...rest } = prev;
+                          return rest;
+                        });
+                      }}
+                      className="text-red-500 hover:text-red-700"
+                    >
+                      <XIcon className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div
+                    className={cn(
+                      "h-2 rounded-full transition-all duration-300",
+                      upload.status === 'completed' ? 'bg-green-500' :
+                      upload.status === 'failed' ? 'bg-red-500' : 'bg-blue-500'
+                    )}
+                    style={{ width: `${upload.progress}%` }}
+                  />
+                </div>
+                <span className="text-xs text-gray-500 mt-1">
+                  {upload.status === 'completed' ? 'Upload complete' :
+                   upload.status === 'failed' ? 'Upload failed' :
+                   `${Math.round(upload.progress)}%`}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
 };
+

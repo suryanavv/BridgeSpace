@@ -40,3 +40,14 @@
 .read-the-docs {
   color: #888;
 }
+
+
+@keyframes dotFade {
+  0%, 100% { opacity: 0; }
+  50% { opacity: 1; }
+}
+
+.animate-dot {
+  animation: dotFade 1.5s infinite;
+  display: inline-block;
+}

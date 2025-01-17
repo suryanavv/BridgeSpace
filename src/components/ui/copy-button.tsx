@@ -5,7 +5,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { cn } from "@/lib/utils";
 import { Check, Copy } from "lucide-react";
 import { useState } from "react";
-import { toast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 
 interface CopyButtonProps {
   textToCopy: string;
@@ -24,17 +24,10 @@ export default function CopyButton({ textToCopy }: CopyButtonProps) {
       try {
         document.execCommand('copy');
         setCopied(true);
-        toast({
-          title: "Copied to clipboard",
-          description: "Text has been copied successfully"
-        });
+        toast.success("Copied to clipboard");
         setTimeout(() => setCopied(false), 1500);
       } catch (err) {
-        toast({
-          title: "Failed to copy",
-          description: "Please try again",
-          variant: "destructive"
-        });
+        toast.error("Failed to copy");
       }
       document.body.removeChild(textArea);
       return;
@@ -43,18 +36,11 @@ export default function CopyButton({ textToCopy }: CopyButtonProps) {
     navigator.clipboard.writeText(textToCopy)
       .then(() => {
         setCopied(true);
-        toast({
-          title: "Copied to clipboard",
-          description: "Text has been copied successfully"
-        });
+        toast.success("Copied to clipboard");
         setTimeout(() => setCopied(false), 1500);
       })
       .catch(() => {
-        toast({
-          title: "Failed to copy",
-          description: "Please try again",
-          variant: "destructive"
-        });
+        toast.error("Failed to copy");
       });
   };
 

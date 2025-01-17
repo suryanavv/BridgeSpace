@@ -11,43 +11,49 @@ export type Database = {
     Tables: {
       shared_files: {
         Row: {
-          created_at: string
-          id: string
+          id: string  // UUID stored as string
           name: string
           type: string
           url: string
+          created_at: string
+          network_id: string | null
         }
         Insert: {
-          created_at?: string
-          id?: string
+          id?: string  // UUID is optional for insert
           name: string
           type: string
           url: string
+          created_at?: string
+          network_id?: string | null
         }
         Update: {
-          created_at?: string
           id?: string
           name?: string
           type?: string
           url?: string
+          created_at?: string
+          network_id?: string | null
         }
         Relationships: []
       }
       shared_text: {
         Row: {
+          id: string  // UUID stored as string
           content: string | null
           created_at: string
-          id: string
+          network_id: string | null
         }
         Insert: {
+          id?: string  // UUID is optional for insert
           content?: string | null
           created_at?: string
-          id?: string
+          network_id?: string | null
         }
         Update: {
+          id?: string
           content?: string | null
           created_at?: string
-          id?: string
+          network_id?: string | null
         }
         Relationships: []
       }
@@ -163,3 +169,10 @@ export type CompositeTypes<
   : PublicCompositeTypeNameOrOptions extends keyof PublicSchema["CompositeTypes"]
     ? PublicSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
     : never
+
+export interface NetworkInfo {
+  network_id: string;
+  ip_address: string;
+  subnet?: string;
+  created_at?: string;
+}
