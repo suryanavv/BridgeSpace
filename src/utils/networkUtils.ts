@@ -166,28 +166,50 @@ export const uploadFile = async (file: File): Promise<any> => {
  * @param content - The text content to save
  * @returns Promise that resolves to the saved text data
  */
+// Update the saveSharedText function
 export const saveSharedText = async (content: string): Promise<any> => {
   const networkPrefix = getCachedNetworkPrefix();
   if (!networkPrefix) {
     throw new Error('Network prefix not available. Please try again.');
   }
 
-  const { data, error } = await supabase
+  // First try to get existing text for this network
+  const { data: existingText, error: fetchError } = await supabase
     .from('shared_texts')
-    .insert({
-      content,
-      network_prefix: networkPrefix,
-      shared_at: getISTTimestamp()
-    })
-    .select()
+    .select('id')
+    .eq('network_prefix', networkPrefix)
     .single();
 
-  if (error) {
-    console.error('Error saving text:', error);
-    throw new Error('Failed to save text');
+  if (fetchError && fetchError.code !== 'PGNF') {
+    throw fetchError;
   }
 
-  return data;
+  if (existingText) {
+    // Update existing text
+    const { data, error } = await supabase
+      .from('shared_texts')
+      .update({ content, shared_at: getISTTimestamp() })
+      .eq('id', existingText.id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  } else {
+    // Create new text if none exists for this network
+    const { data, error } = await supabase
+      .from('shared_texts')
+      .insert({
+        content,
+        network_prefix: networkPrefix,
+        shared_at: getISTTimestamp()
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  }
 };
 
 /**

@@ -8,6 +8,8 @@ import FileList from '@/components/FileList';
 import { toast } from 'sonner';
 import { fetchSharedFiles, fetchSharedTexts } from '@/utils/networkUtils';
 import { supabase } from '@/integrations/supabase/client';  // Add this line
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Upload, FileText } from "lucide-react";
 
 // Types for shared items
 interface SharedFile {
@@ -181,44 +183,51 @@ const Index: React.FC = () => {
       <Header />
       
       <main className="container max-w-5xl mx-auto px-4 pb-20">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
-          <div className="md:col-span-3">
+        <div className="grid grid-cols-1 gap-6 mt-6">
+          <div className="col-span-1">
             <NetworkStatus 
               onNetworkChange={handleNetworkChange}
-              onRefresh={fetchSharedItems}  // Add this line
+              onRefresh={fetchSharedItems}
             />
           </div>
           
-          <div className="md:col-span-3 lg:col-span-1">
-            <div className="space-y-6">
-              <FileUpload 
-                networkConnected={networkConnected}
-                onFilesUploaded={handleFilesUploaded}
-              />
-              
-              <TextShare
-                networkConnected={networkConnected}
-                onTextShared={handleTextShared}
-              />
-            </div>
-          </div>
-          
-          <div className="md:col-span-3 lg:col-span-2">
-            <FileList
-              files={sharedFiles}
-              texts={sharedTexts}
-              onDownload={handleDownload}
-              isLoading={isLoading}
-            />
+          <div className="col-span-1">
+            <Tabs defaultValue="file" className="w-full">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="file" className="flex items-center gap-2">
+                  <Upload className="h-4 w-4" />
+                  File
+                </TabsTrigger>
+                <TabsTrigger value="text" className="flex items-center gap-2">
+                  <FileText className="h-4 w-4" />
+                  Text
+                </TabsTrigger>
+              </TabsList>
+              <TabsContent value="file" className="mt-4 space-y-6">
+                <FileUpload 
+                  networkConnected={networkConnected}
+                  onFilesUploaded={handleFilesUploaded}
+                />
+                <FileList
+                  files={sharedFiles}
+                  onDownload={handleDownload}
+                  isLoading={isLoading}
+                />
+              </TabsContent>
+              <TabsContent value="text" className="mt-4">
+                <TextShare
+                  networkConnected={networkConnected}
+                  onTextShared={handleTextShared}
+                />
+              </TabsContent>
+            </Tabs>
           </div>
         </div>
         
         <div className="mt-8 text-center">
           <p className="text-xs text-muted-foreground">
             {networkConnected ? (
-              <>
-                Connected to network {networkPrefix}.* as {clientIP}
-              </>
+              <>Connected to network {networkPrefix}.* as {clientIP}</>
             ) : (
               'Not connected to any network'
             )}
