@@ -22,18 +22,20 @@ interface SharedText {
 
 interface FileListProps {
   files: SharedFile[];
-  texts: SharedText[];
+  texts?: SharedText[];  // Make texts optional
   onDownload?: (file: SharedFile) => void;
-  onCopyText?: (text: SharedText) => void;
+  onCopyText?: (text: SharedText) => void;  // Add missing prop type
+  onDeleteFile?: (file: SharedFile) => void;
   isLoading?: boolean;
   onRefresh?: () => void;
 }
 
 const FileList: React.FC<FileListProps> = ({ 
   files, 
-  texts, 
+  texts = [], // Provide default empty array
   onDownload,
   onCopyText,
+  onDeleteFile,
   isLoading = false,
   onRefresh
 }) => {
@@ -109,7 +111,8 @@ const FileList: React.FC<FileListProps> = ({
     }
   };
 
-  const hasSharedItems = files.length > 0 || texts.length > 0;
+  // Fix the hasSharedItems check
+  const hasSharedItems = files.length > 0 || (texts && texts.length > 0);
 
   return (
     <div className="glass-card rounded-lg p-6 animate-fade-in">
@@ -137,78 +140,45 @@ const FileList: React.FC<FileListProps> = ({
           <div className="flex justify-center mb-3 text-muted-foreground">
             <FileIcon className="h-12 w-12 opacity-50" />
           </div>
-          <h3 className="text-base font-medium mb-1">No shared items yet</h3>
+          <h3 className="text-base font-medium mb-1">No shared files yet</h3>
           <p className="text-sm text-muted-foreground">
-            Shared files and text will appear here
+            Shared files will appear here
           </p>
         </div>
       ) : (
         <div className="space-y-6">
-          {files.length > 0 && (
-            <div className="animate-slide-up">
-              <h3 className="text-sm font-medium mb-2 flex items-center">
-                <FileIcon className="h-4 w-4 mr-1" />
-                Files ({files.length})
-              </h3>
-              <div className="space-y-3 max-h-60 overflow-y-auto pr-2">
-                {files.map((file) => (
-                  <div
-                    key={file.id}
-                    className="flex items-center p-3 border border-border rounded-md hover:bg-secondary/50 transition-colors"
-                  >
-                    <div className="mr-3">{getFileIcon(file.type)}</div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">{file.name}</p>
-                      <div className="flex items-center text-xs text-muted-foreground">
-                        <span>{formatSize(file.size)}</span>
-                        <span className="mx-1.5">•</span>
-                        <span>{formatDate(file.shared_at)}</span>
-                      </div>
-                    </div>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="ml-2"
-                      onClick={() => handleDownload(file)}
-                    >
-                      <Download className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-          
-          {texts.length > 0 && (
-            <div className="animate-slide-up delay-100">
-              <h3 className="text-sm font-medium mb-2 flex items-center">
-                <FileText className="h-4 w-4 mr-1" />
-                Text ({texts.length})
-              </h3>
-              <div className="space-y-3 max-h-60 overflow-y-auto pr-2">
-                {texts.map((text) => (
-                  <div
-                    key={text.id}
-                    className="p-3 border border-border rounded-md hover:bg-secondary/50 transition-colors"
-                  >
-                    <div className="text-sm">{truncateText(text.content)}</div>
-                    <div className="flex items-center justify-between mt-2">
-                      <span className="text-xs text-muted-foreground">
-                        {formatDate(text.shared_at)}
-                      </span>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleCopyText(text)}
-                      >
-                        Copy
-                      </Button>
+          <div className="animate-slide-up">
+            <h3 className="text-sm font-medium mb-2 flex items-center">
+              <FileIcon className="h-4 w-4 mr-1" />
+              Files ({files.length})
+            </h3>
+            <div className="space-y-3 max-h-[calc(100vh-300px)] overflow-y-auto pr-2">
+              {files.map((file) => (
+                <div
+                  key={file.id}
+                  className="flex items-center p-3 border border-border rounded-md hover:bg-secondary/50 transition-colors"
+                >
+                  <div className="mr-3">{getFileIcon(file.type)}</div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{file.name}</p>
+                    <div className="flex items-center text-xs text-muted-foreground">
+                      <span>{formatSize(file.size)}</span>
+                      <span className="mx-1.5">•</span>
+                      <span>{formatDate(file.shared_at)}</span>
                     </div>
                   </div>
-                ))}
-              </div>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="ml-2"
+                    onClick={() => handleDownload(file)}
+                  >
+                    <Download className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))}
             </div>
-          )}
+          </div>
         </div>
       )}
     </div>
