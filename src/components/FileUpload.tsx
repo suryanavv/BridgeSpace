@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import { File, Upload, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { uploadFile } from '@/utils/networkUtils';
+import { fetchSharedFiles } from '@/utils/networkUtils';
 
 interface FileUploadProps {
   networkConnected: boolean;
@@ -35,16 +36,41 @@ const FileUpload: React.FC<FileUploadProps> = ({ networkConnected, onFilesUpload
     setIsUploading(true);
     
     try {
-      // Deduplicate files based on name and size
-      const uniqueFiles = Array.from(new Map(
-        fileList.map(file => [`${file.name}-${file.size}`, file])
-      ).values());
+      // Get current files in the network
+      const existingFiles = await fetchSharedFiles();
+      const remainingSlots = 50 - existingFiles.length;
+
+      if (remainingSlots <= 0) {
+        toast.error('Network storage full', {
+          description: 'Maximum limit of 50 files reached. Please delete some files before uploading.',
+        });
+        return;
+      }
+
+      // Deduplicate files while maintaining order
+      const seen = new Set();
+      const uniqueFiles = fileList.filter(file => {
+        const key = `${file.name}-${file.size}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+
+      // Check if total files would exceed limit
+      if (uniqueFiles.length > remainingSlots) {
+        toast.error('Too many files', {
+          description: `You can only upload ${remainingSlots} more file(s). Please select fewer files.`,
+        });
+        return;
+      }
       
-      // Upload each file and collect the uploaded file data
-      const uploadPromises = uniqueFiles.map(file => uploadFile(file));
-      const uploadedFiles = await Promise.all(uploadPromises);
+      // Upload files sequentially to maintain order
+      const uploadedFiles = [];
+      for (const file of uniqueFiles) {
+        const fileData = await uploadFile(file);
+        uploadedFiles.push(fileData);
+      }
       
-      // Notify the parent component about the newly uploaded files
       onFilesUploaded(uniqueFiles);
       
       toast.success('Files shared', {

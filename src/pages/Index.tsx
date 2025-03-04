@@ -180,16 +180,21 @@ const Index: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <Header />
+      <Header onNetworkChange={handleNetworkChange} />
+      
+      <div className="mt-2 text-center">
+        <p className="text-xs text-muted-foreground">
+          {networkConnected ? (
+            <>Connected to network {networkPrefix}.* as {clientIP}</>
+          ) : (
+            'Not connected to any network'
+          )}
+        </p>
+      </div>
       
       <main className="container max-w-5xl mx-auto px-4 pb-20">
         <div className="grid grid-cols-1 gap-6 mt-6">
-          <div className="col-span-1">
-            <NetworkStatus 
-              onNetworkChange={handleNetworkChange}
-              onRefresh={fetchSharedItems}
-            />
-          </div>
+          
           
           <div className="col-span-1">
             <Tabs defaultValue="file" className="w-full">
@@ -224,15 +229,7 @@ const Index: React.FC = () => {
           </div>
         </div>
         
-        <div className="mt-8 text-center">
-          <p className="text-xs text-muted-foreground">
-            {networkConnected ? (
-              <>Connected to network {networkPrefix}.* as {clientIP}</>
-            ) : (
-              'Not connected to any network'
-            )}
-          </p>
-        </div>
+        
       </main>
     </div>
   );

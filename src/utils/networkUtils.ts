@@ -110,12 +110,12 @@ export const uploadFile = async (file: File): Promise<any> => {
   try {
     // Create unique file path with IST timestamp
     const fileExt = file.name.split('.').pop() || '';
-    const timestamp = getISTTimestamp();
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     const randomString = Math.random().toString(36).substring(2, 15);
     const sanitizedFileName = file.name.replace(/[^\x00-\x7F]/g, "");
     const filePath = `${networkPrefix}/${timestamp}_${randomString}.${fileExt}`;
 
-    // Upload file directly to Supabase storage instead of using edge function
+    // Upload file to Supabase storage with error handling
     const { data: storageData, error: storageError } = await supabase
       .storage
       .from('shared_files')
@@ -126,38 +126,48 @@ export const uploadFile = async (file: File): Promise<any> => {
 
     if (storageError) {
       console.error('Storage error:', storageError);
-      throw new Error('Failed to upload file');
+      throw new Error(storageError.message || 'Failed to upload file');
     }
 
-    // Get public URL for the file
-    const { data: { publicUrl } } = supabase
+    if (!storageData) {
+      throw new Error('No storage data received');
+    }
+
+    // Get public URL with error handling
+    const { data: urlData } = await supabase
       .storage
       .from('shared_files')
       .getPublicUrl(filePath);
 
-    // Save file metadata to database with IST timestamp
+    if (!urlData || !urlData.publicUrl) {
+      throw new Error('Failed to get public URL');
+    }
+
+    // Save file metadata to database
     const { data: fileData, error: dbError } = await supabase
       .from('shared_files')
       .insert({
         name: sanitizedFileName,
         size: file.size,
         type: file.type,
-        url: publicUrl,
+        url: urlData.publicUrl,
         network_prefix: networkPrefix,
-        shared_at: getISTTimestamp()
+        shared_at: new Date().toISOString()
       })
       .select()
       .single();
 
     if (dbError) {
-      console.error('Database error:', dbError);
-      throw new Error('Failed to save file metadata');
+      throw new Error(dbError.message || 'Failed to save file metadata');
     }
 
     return fileData;
   } catch (error) {
     console.error('Upload error:', error);
-    throw error;
+    if (error instanceof Error) {
+      throw new Error(`Upload failed: ${error.message}`);
+    }
+    throw new Error('Upload failed: Unknown error');
   }
 };
 

@@ -74,7 +74,7 @@ const NetworkStatus: React.FC<NetworkStatusProps> = ({ onNetworkChange, onRefres
 
   return (
     <div className="glass-card p-4 rounded-lg animate-fade-in">
-      <div className="flex items-center justify-between mb-3">
+      <div className="flex items-center justify-between">
         <div className="flex items-center space-x-2">
           {status === 'connected' ? (
             <Wifi className="h-5 w-5 text-green-500" />
@@ -89,22 +89,9 @@ const NetworkStatus: React.FC<NetworkStatusProps> = ({ onNetworkChange, onRefres
              'Checking...'}
           </span>
         </div>
-        
-        <div className="text-xs text-muted-foreground">
-          {ip ? (
-            <span>Your IP : {ip}</span>
-          ) : (
-            <span>Detecting IP...</span>
-          )}
-        </div>
       </div>
+
       
-      {networkPrefix && (
-        <div className="mt-2 text-xs">
-          <span className="text-muted-foreground">Network : </span>
-          <span className="font-medium">{networkPrefix}.*</span>
-        </div>
-      )}
     </div>
 );
 };
