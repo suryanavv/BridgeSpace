@@ -1,0 +1,63 @@
+network_connections Table
+
+Disable RLS: This means that by default, no restrictions are in place. You're explicitly defining the rules.
+INSERT (Anyone can insert their own IP):
+This allows users to add their IP addresses to the network_connections table.
+This is likely used for tracking or managing network access.
+The "own IP" part implies there's a mechanism (e.g., a function) to determine the user's IP during the insert.
+SELECT (Anyone can see IPs with same network prefix):
+This allows users to see other IPs that share the same network prefix as their own.
+This suggests a concept of network segmentation or grouping.
+This would require a function that compares the user's IP and the stored IPs to extract and compare network prefixes.
+UPDATE (Anyone can update their own record):
+Users can modify their own IP record.
+This allows for updates if their IP changes or if they need to correct an entry.
+
+
+shared_files Table
+
+Disable RLS: Similar to network_connections, RLS is initially disabled.
+DELETE (Allow delete files from same network):
+Users can delete files if they are on the same network as the file's owner or uploader (or a related network identifier).
+This reinforces the network-based access control.
+INSERT (Anyone can insert files):
+This allows anyone to upload files.
+This means the storage system is intended to accept uploads from the public.
+SELECT (Anyone can view files from same network):
+Users can view files if they are on the same network as the file's owner.
+This limits viewing to the local network.
+
+
+shared_texts Table
+
+Disable RLS: Again, RLS is disabled by default.
+INSERT (Allow inserts from same network):
+Users can insert text entries if they are on the same network.
+UPDATE (Allow updates from same network):
+Users can update text entries if they are on the same network.
+INSERT (Anyone can insert texts):
+This allows any user to insert text data.
+SELECT (Anyone can view texts from same network):
+Users can view text data if they are on the same network.
+INSERT (Enable insert access for all users):
+This is a duplicate insert policy that grants insert access to all users.
+SELECT (Enable read access for all users):
+This grants read access to all users.
+UPDATE (Enable update access for all users):
+This grants update access to all users.
+Important note: There are duplicate policy entries for the shared_texts table. This should be reviewed and cleaned up. Having both "same network" and "all users" policies will cause unexpected results.
+
+
+Storage Policies (shared_files)
+
+DELETE (Allow delete objects from same network):
+This mirrors the RLS policy for the shared_files table, applying the same network-based deletion restriction to the storage objects.
+SELECT (Public Access):
+This indicates that files can be publicly read.
+INSERT (Public Upload):
+This allows public uploads.
+
+Storage Policies (storage.objects & storage.buckets)
+
+No policies are currently defined for the storage.objects and storage.buckets tables.
+This means that by default, the storage system will likely rely on its own default permissions or access controls.

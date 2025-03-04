@@ -7,7 +7,7 @@ import TextShare from '@/components/TextShare';
 import FileList from '@/components/FileList';
 import { toast } from 'sonner';
 import { fetchSharedFiles, fetchSharedTexts } from '@/utils/networkUtils';
-import { supabase } from '@/integrations/supabase/client';  // Add this line
+import { supabase } from '@/integrations/supabase/client';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Upload, FileText } from "lucide-react";
 
@@ -178,6 +178,60 @@ const Index: React.FC = () => {
     };
   }, [networkConnected, networkPrefix]);
 
+  const getStoragePathFromUrl = (url: string): string => {
+    const urlObj = new URL(url);
+    const pathname = urlObj.pathname;
+    const prefix = '/storage/v1/object/public/shared_files/';
+    if (pathname.startsWith(prefix)) {
+      return pathname.substring(prefix.length);
+    }
+    throw new Error('Invalid storage URL');
+  };
+
+  const handleDeleteFile = async (file: SharedFile) => {
+    try {
+      // First check if file exists in storage
+      const storagePath = getStoragePathFromUrl(file.url);
+      const { data: fileExists } = await supabase.storage
+        .from('shared_files')
+        .list(storagePath.split('/')[0], {
+          search: storagePath.split('/')[1]
+        });
+  
+      // Delete from storage if file exists
+      if (fileExists && fileExists.length > 0) {
+        const { error: storageError } = await supabase.storage
+          .from('shared_files')
+          .remove([storagePath]);
+  
+        if (storageError) {
+          throw new Error(`Storage deletion failed: ${storageError.message}`);
+        }
+      }
+  
+      // Delete from database regardless of storage status
+      const { error: dbError } = await supabase
+        .from('shared_files')
+        .delete()
+        .eq('id', file.id);
+  
+      if (dbError) {
+        throw new Error(`Database deletion failed: ${dbError.message}`);
+      }
+  
+      await fetchSharedItems();
+  
+      toast.success('File deleted', {
+        description: `Successfully deleted ${file.name}`,
+      });
+    } catch (error) {
+      console.error('Error deleting file:', error);
+      toast.error('Failed to delete file', {
+        description: 'Please try again later or check your permissions.',
+      });
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <Header onNetworkChange={handleNetworkChange} />
@@ -216,6 +270,7 @@ const Index: React.FC = () => {
                 <FileList
                   files={sharedFiles}
                   onDownload={handleDownload}
+                  onDeleteFile={handleDeleteFile}
                   isLoading={isLoading}
                 />
               </TabsContent>

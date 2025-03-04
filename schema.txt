@@ -1,0 +1,26 @@
+network_connections
+-------------------
+id              uuid
+ip_address      text
+network_prefix  text
+created_at      timestamptz
+last_active     timestamptz
+
+
+shared_files
+------------
+id              uuid
+name            text
+size            int8
+type            text
+url             text
+network_prefix  text
+shared_at       timestamptz
+
+
+shared_texts
+------------
+id              uuid
+content         text
+network_prefix  text
+shared_at       timestamptz

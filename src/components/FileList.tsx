@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { File as LucideFileIcon, FileText, Download, RefreshCw } from 'lucide-react';
+import { File as LucideFileIcon, FileText, Download, RefreshCw, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -169,14 +169,25 @@ const FileList: React.FC<FileListProps> = ({
                       <span>{formatDate(file.shared_at)}</span>
                     </div>
                   </div>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="ml-2"
-                    onClick={() => handleDownload(file)}
-                  >
-                    <Download className="h-4 w-4" />
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="text-destructive hover:text-destructive/90"
+                      onClick={() => onDeleteFile?.(file)}
+                      title="Delete file"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => handleDownload(file)}
+                      title="Download file"
+                    >
+                      <Download className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
               ))}
             </div>
