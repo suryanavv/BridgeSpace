@@ -17,9 +17,6 @@ const Header: React.FC = () => {
             </div>
           </div>
           
-          <div className="text-sm text-muted-foreground">
-            <span className="hidden sm:inline">Connected devices will appear here</span>
-          </div>
         </div>
       </div>
     </header>

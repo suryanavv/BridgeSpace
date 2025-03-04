@@ -92,7 +92,7 @@ const NetworkStatus: React.FC<NetworkStatusProps> = ({ onNetworkChange, onRefres
         
         <div className="text-xs text-muted-foreground">
           {ip ? (
-            <span>IP: {ip}</span>
+            <span>Your IP : {ip}</span>
           ) : (
             <span>Detecting IP...</span>
           )}
@@ -101,7 +101,7 @@ const NetworkStatus: React.FC<NetworkStatusProps> = ({ onNetworkChange, onRefres
       
       {networkPrefix && (
         <div className="mt-2 text-xs">
-          <span className="text-muted-foreground">Network: </span>
+          <span className="text-muted-foreground">Network : </span>
           <span className="font-medium">{networkPrefix}.*</span>
         </div>
       )}

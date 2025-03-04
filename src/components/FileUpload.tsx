@@ -1,7 +1,7 @@
 
 import React, { useCallback, useState } from 'react';
 import { toast } from 'sonner';
-import { File, Upload } from 'lucide-react';
+import { File, Upload, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { uploadFile } from '@/utils/networkUtils';
 
@@ -88,10 +88,16 @@ const FileUpload: React.FC<FileUploadProps> = ({ networkConnected, onFilesUpload
         onDrop={handleDrop}
       >
         <div className="flex flex-col items-center justify-center py-4">
-          <Upload className={`h-10 w-10 ${isUploading ? 'animate-spin' : ''} text-muted-foreground mb-3`} />
-          <p className="text-sm text-center mb-2">
-            {isUploading ? 'Uploading...' : (
-              <>
+          {isUploading ? (
+            <>
+              <Loader2 className="h-10 w-10 animate-spin text-primary mb-3" />
+              <p className="text-sm font-medium text-center mb-1">Uploading files...</p>
+              <p className="text-xs text-muted-foreground text-center">Please wait</p>
+            </>
+          ) : (
+            <>
+              <Upload className="h-10 w-10 text-muted-foreground mb-3" />
+              <p className="text-sm text-center mb-2">
                 Drag and drop files here, or{' '}
                 <label className="text-primary cursor-pointer hover:underline">
                   browse
@@ -103,12 +109,12 @@ const FileUpload: React.FC<FileUploadProps> = ({ networkConnected, onFilesUpload
                     disabled={!networkConnected || isUploading}
                   />
                 </label>
-              </>
-            )}
-          </p>
-          <p className="text-xs text-muted-foreground text-center">
-            Files will be shared with devices on your network
-          </p>
+              </p>
+              <p className="text-xs text-muted-foreground text-center">
+                Files will be shared with devices on your network
+              </p>
+            </>
+          )}
         </div>
       </div>
       

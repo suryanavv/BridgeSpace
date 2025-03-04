@@ -1,9 +1,11 @@
 
 import React from 'react';
-import { File as FileIcon, FileText, Download, RefreshCw } from 'lucide-react';
+import { File as LucideFileIcon, FileText, Download, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { Loader2 } from 'lucide-react';
+import { FileIcon, ImageIcon, VideoIcon, FileTextIcon } from '@radix-ui/react-icons';
 
 interface SharedFile {
   id: string;
@@ -32,7 +34,7 @@ interface FileListProps {
 
 const FileList: React.FC<FileListProps> = ({ 
   files, 
-  texts = [], // Provide default empty array
+  texts = [],
   onDownload,
   onCopyText,
   onDeleteFile,
@@ -97,21 +99,21 @@ const FileList: React.FC<FileListProps> = ({
 
   const getFileIcon = (type: string) => {
     if (type.startsWith('image/')) {
-      return <div className={cn("file-icon", "before:bg-blue-500")}>IMG</div>;
+      return <ImageIcon className="h-5 w-5 text-blue-500" />;
     } else if (type.startsWith('video/')) {
-      return <div className={cn("file-icon", "before:bg-purple-500")}>VID</div>;
+      return <VideoIcon className="h-5 w-5 text-purple-500" />;
     } else if (type.startsWith('audio/')) {
-      return <div className={cn("file-icon", "before:bg-pink-500")}>AUD</div>;
+      return <FileTextIcon className="h-5 w-5 text-pink-500" />;
     } else if (type.startsWith('text/')) {
-      return <div className={cn("file-icon", "before:bg-green-500")}>TXT</div>;
+      return <FileTextIcon className="h-5 w-5 text-green-500" />;
     } else if (type.includes('pdf')) {
-      return <div className={cn("file-icon", "before:bg-red-500")}>PDF</div>;
+      return <FileTextIcon className="h-5 w-5 text-red-500" />;
     } else {
-      return <div className={cn("file-icon", "before:bg-gray-500")}>DOC</div>;
+      return <FileIcon className="h-5 w-5 text-gray-500" />;
     }
   };
 
-  // Fix the hasSharedItems check
+  // Move hasSharedItems definition here, before it's used
   const hasSharedItems = files.length > 0 || (texts && texts.length > 0);
 
   return (
@@ -133,12 +135,12 @@ const FileList: React.FC<FileListProps> = ({
       
       {isLoading ? (
         <div className="flex justify-center items-center py-12">
-          <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
       ) : !hasSharedItems ? (
         <div className="text-center py-8">
           <div className="flex justify-center mb-3 text-muted-foreground">
-            <FileIcon className="h-12 w-12 opacity-50" />
+            <LucideFileIcon className="h-12 w-12 opacity-50" />
           </div>
           <h3 className="text-base font-medium mb-1">No shared files yet</h3>
           <p className="text-sm text-muted-foreground">
@@ -149,7 +151,7 @@ const FileList: React.FC<FileListProps> = ({
         <div className="space-y-6">
           <div className="animate-slide-up">
             <h3 className="text-sm font-medium mb-2 flex items-center">
-              <FileIcon className="h-4 w-4 mr-1" />
+              <LucideFileIcon className="h-4 w-4 mr-1" />
               Files ({files.length})
             </h3>
             <div className="space-y-3 max-h-[calc(100vh-300px)] overflow-y-auto pr-2">
