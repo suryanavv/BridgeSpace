@@ -108,39 +108,42 @@ export const uploadFile = async (file: File): Promise<any> => {
   }
 
   try {
-    // Create unique file path with IST timestamp
+    // Create unique file path
     const fileExt = file.name.split('.').pop() || '';
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const timestamp = new Date().toISOString()
+      .replace(/[:.]/g, '-')
+      .replace('T', '_')
+      .replace('Z', '');
     const randomString = Math.random().toString(36).substring(2, 15);
     const sanitizedFileName = file.name.replace(/[^\x00-\x7F]/g, "");
     const filePath = `${networkPrefix}/${timestamp}_${randomString}.${fileExt}`;
 
-    // Upload file to Supabase storage with error handling
+    // Upload file to Supabase storage
     const { data: storageData, error: storageError } = await supabase
       .storage
       .from('shared_files')
       .upload(filePath, file, {
         cacheControl: '3600',
-        upsert: false
+        upsert: false,
+        contentType: file.type // Add content type
       });
 
     if (storageError) {
-      console.error('Storage error:', storageError);
-      throw new Error(storageError.message || 'Failed to upload file');
+      throw new Error(`Storage error: ${storageError.message}`);
     }
 
-    if (!storageData) {
-      throw new Error('No storage data received');
+    if (!storageData?.path) {
+      throw new Error('Failed to upload file: No storage path received');
     }
 
-    // Get public URL with error handling
+    // Get public URL
     const { data: urlData } = await supabase
       .storage
       .from('shared_files')
-      .getPublicUrl(filePath);
+      .getPublicUrl(storageData.path);
 
-    if (!urlData || !urlData.publicUrl) {
-      throw new Error('Failed to get public URL');
+    if (!urlData?.publicUrl) {
+      throw new Error('Failed to get public URL for uploaded file');
     }
 
     // Save file metadata to database
@@ -158,16 +161,18 @@ export const uploadFile = async (file: File): Promise<any> => {
       .single();
 
     if (dbError) {
-      throw new Error(dbError.message || 'Failed to save file metadata');
+      // If database insert fails, try to clean up the uploaded file
+      await supabase.storage.from('shared_files').remove([storageData.path]);
+      throw new Error(`Database error: ${dbError.message}`);
     }
 
     return fileData;
   } catch (error) {
-    console.error('Upload error:', error);
+    // Ensure error is properly formatted
     if (error instanceof Error) {
       throw new Error(`Upload failed: ${error.message}`);
     }
-    throw new Error('Upload failed: Unknown error');
+    throw new Error('Upload failed: Unexpected error occurred');
   }
 };
 
