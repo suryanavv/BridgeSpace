@@ -58,13 +58,12 @@ const FileUpload: React.FC<FileUploadProps> = ({ networkConnected, onFilesUpload
     setUploadProgress(0);
     
     try {
-      const existingFiles = await fetchSharedFiles();
-      const remainingSlots = 50 - existingFiles.length;
-
-      if (remainingSlots <= 0) {
-        toast.error('Network storage full', {
-          description: 'Maximum limit of 50 files reached. Please delete some files before uploading.',
+      // Check if total files would exceed limit (50 is the maximum)
+      if (fileList.length > 50) {
+        toast.error('Too many files', {
+          description: 'You can only upload up to 50 files at once.',
         });
+        setIsUploading(false);
         return;
       }
 
@@ -77,22 +76,21 @@ const FileUpload: React.FC<FileUploadProps> = ({ networkConnected, onFilesUpload
         return true;
       });
 
-      // Check if total files would exceed limit
-      if (uniqueFiles.length > remainingSlots) {
+      // Validate file count after deduplication
+      if (uniqueFiles.length > 50) {
         toast.error('Too many files', {
-          description: `You can only upload ${remainingSlots} more file(s). Please select fewer files.`,
+          description: 'You can only upload up to 50 files at once after removing duplicates.',
         });
+        setIsUploading(false);
         return;
       }
       
       // Upload files sequentially to maintain order
       const uploadedFiles = [];
+      let uploadedCount = 0;
       for (let i = 0; i < uniqueFiles.length; i++) {
         // Check if upload was cancelled
         if (uploadRef.current) {
-          toast.info('Upload cancelled', {
-            description: `Cancelled after uploading ${i} of ${uniqueFiles.length} files`,
-          });
           break;
         }
 
@@ -100,23 +98,36 @@ const FileUpload: React.FC<FileUploadProps> = ({ networkConnected, onFilesUpload
         setUploadStatus(`Uploading ${i + 1}/${uniqueFiles.length}: ${file.name}`);
         
         try {
-          const fileData = await uploadFile(file);
+          const fileData = await uploadFile(file, true);
           uploadedFiles.push(fileData);
+          uploadedCount++;
           setUploadProgress(((i + 1) / uniqueFiles.length) * 100);
         } catch (error) {
           if (uploadRef.current) {
-            // If cancelled, stop gracefully
             break;
           }
-          throw error; // Re-throw if it's a real error
+          throw error;
         }
       }
       
       if (uploadedFiles.length > 0) {
-        onFilesUploaded(uploadedFiles);
-        toast.success('Files shared', {
-          description: `${uploadedFiles.length} file(s) are now available on your network.`,
-        });
+        if (!uploadRef.current) {
+          toast.success('Upload complete', {
+            description: `Successfully shared ${uploadedCount} file${uploadedCount > 1 ? 's' : ''} on your network.`
+          });
+          // Only update the file list once after all files are uploaded
+          const updatedFiles = await fetchSharedFiles();
+          onFilesUploaded(updatedFiles);
+        } else {
+          toast.info('Upload cancelled', {
+            description: `Cancelled after uploading ${uploadedCount} of ${uniqueFiles.length} files`
+          });
+          if (uploadedCount > 0) {
+            // Update file list with all successfully uploaded files before cancellation
+            const updatedFiles = await fetchSharedFiles();
+            onFilesUploaded(updatedFiles);
+          }
+        }
       }
     } catch (error) {
       console.error('File upload error:', error);

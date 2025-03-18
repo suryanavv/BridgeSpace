@@ -14,6 +14,7 @@ const NetworkStatus: React.FC<NetworkStatusProps> = ({ onNetworkChange, onRefres
   const [networkPrefix, setNetworkPrefix] = useState<string>('');
   const [status, setStatus] = useState<'connected' | 'disconnected' | 'checking'>('checking');
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
+  const [hasShownToast, setHasShownToast] = useState<boolean>(false);
 
   const checkNetwork = async () => {
     try {
@@ -35,10 +36,13 @@ const NetworkStatus: React.FC<NetworkStatusProps> = ({ onNetworkChange, onRefres
         onNetworkChange(true, prefix, clientIP);
       }
       
-      toast.success('Network connected', {
-        description: `You're connected to network ${prefix}.*`,
-        duration: 3000,
-      });
+      if (!hasShownToast) {
+        toast.success('Network connected', {
+          description: `You're connected to network ${prefix}.*`,
+          duration: 3000,
+        });
+        setHasShownToast(true);
+      }
     } catch (error) {
       console.error('Failed to get network information:', error);
       setStatus('disconnected');

@@ -101,7 +101,7 @@ const getISTTimestamp = (): string => {
   return new Date().toLocaleString('en-IN', options);
 };
 
-export const uploadFile = async (file: File): Promise<any> => {
+export const uploadFile = async (file: File, skipRefresh: boolean = false): Promise<any> => {
   const networkPrefix = getCachedNetworkPrefix();
   if (!networkPrefix) {
     throw new Error('Network prefix not available. Please try again.');

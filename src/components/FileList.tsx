@@ -6,6 +6,17 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { Loader2 } from 'lucide-react';
 import { FileIcon, ImageIcon, VideoIcon, FileTextIcon } from '@radix-ui/react-icons';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 
 interface SharedFile {
   id: string;
@@ -28,6 +39,7 @@ interface FileListProps {
   onDownload?: (file: SharedFile) => void;
   onCopyText?: (text: SharedText) => void;  // Add missing prop type
   onDeleteFile?: (file: SharedFile) => void;
+  onDeleteAllFiles?: () => void; // Add handler for deleting all files
   isLoading?: boolean;
   onRefresh?: () => void;
 }
@@ -38,6 +50,7 @@ const FileList: React.FC<FileListProps> = ({
   onDownload,
   onCopyText,
   onDeleteFile,
+  onDeleteAllFiles,
   isLoading = false,
   onRefresh
 }) => {
@@ -164,10 +177,37 @@ const FileList: React.FC<FileListProps> = ({
       ) : (
         <div className="space-y-6">
           <div className="animate-slide-up">
-            <h3 className="text-sm font-medium mb-2 flex items-center">
-              <LucideFileIcon className="h-4 w-4 mr-1" />
-              Files ({files.length})
-            </h3>
+            <div className="flex justify-between items-center mb-2">
+              <h3 className="text-sm font-medium flex items-center">
+                <LucideFileIcon className="h-4 w-4 mr-1" />
+                Files ({files.length})
+              </h3>
+              {onDeleteAllFiles && files.length > 0 && (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="text-destructive"
+                    >
+                      Delete All
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Delete All Files</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Are you sure you want to delete all files? This action cannot be undone.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction onClick={onDeleteAllFiles}>Delete All</AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              )}
+            </div>
             <div className="space-y-3 max-h-[calc(100vh-300px)] overflow-y-auto pr-2">
               {files.map((file) => (
                 <div

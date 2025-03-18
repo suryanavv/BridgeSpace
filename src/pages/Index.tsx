@@ -292,6 +292,63 @@ const Index: React.FC = () => {
     }
   };
 
+  const handleDeleteAllFiles = async () => {
+    try {
+      // Get the current network prefix to ensure we're only deleting files from our network
+      const currentNetworkPrefix = getCachedNetworkPrefix();
+      if (!currentNetworkPrefix) {
+        throw new Error(
+          "Network not identified. Please reconnect to your network."
+        );
+      }
+
+      // First delete all files from database for the current network
+      const { error: dbError } = await supabase
+        .from("shared_files")
+        .delete()
+        .eq("network_prefix", currentNetworkPrefix);
+
+      if (dbError) {
+        console.error("Database deletion error:", dbError);
+        throw new Error(`Database deletion failed: ${dbError.message}`);
+      }
+
+      // Then try to delete all files from storage
+      // Note: This is a best-effort operation as we can't guarantee all files will be deleted
+      // from storage if the paths can't be parsed correctly
+      for (const file of sharedFiles) {
+        if (file.network_prefix !== currentNetworkPrefix) continue;
+        
+        try {
+          const storagePath = getStoragePathFromUrl(file.url);
+          if (storagePath) {
+            await supabase.storage
+              .from("shared_files")
+              .remove([storagePath]);
+          }
+        } catch (storageError) {
+          console.warn("Storage deletion warning for file:", file.name, storageError);
+          // Continue even if individual storage deletion fails
+        }
+      }
+
+      // Refresh the file list
+      await fetchSharedItems();
+
+      toast.success("All files deleted", {
+        description: `Successfully deleted all files from your network`,
+      });
+    } catch (error) {
+      console.error("Error deleting all files:", error);
+      toast.error("Failed to delete all files", {
+        description:
+          error instanceof Error
+            ? error.message
+            : "Please try again later or check your permissions.",
+      });
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <Header onNetworkChange={handleNetworkChange} />
@@ -331,6 +388,7 @@ const Index: React.FC = () => {
                   files={sharedFiles}
                   onDownload={handleDownload}
                   onDeleteFile={handleDeleteFile}
+                  onDeleteAllFiles={handleDeleteAllFiles}
                   isLoading={isLoading}
                 />
               </TabsContent>
