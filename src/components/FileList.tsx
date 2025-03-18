@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { File as LucideFileIcon, FileText, Download, RefreshCw, Trash2 } from 'lucide-react';
+import { File as LucideFileIcon, Download, RefreshCw, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -35,18 +35,16 @@ interface SharedText {
 
 interface FileListProps {
   files: SharedFile[];
-  texts?: SharedText[];  // Make texts optional
   onDownload?: (file: SharedFile) => void;
-  onCopyText?: (text: SharedText) => void;  // Add missing prop type
+  onCopyText?: (text: SharedText) => void;
   onDeleteFile?: (file: SharedFile) => void;
-  onDeleteAllFiles?: () => void; // Add handler for deleting all files
+  onDeleteAllFiles?: () => void;
   isLoading?: boolean;
   onRefresh?: () => void;
 }
 
 const FileList: React.FC<FileListProps> = ({ 
-  files, 
-  texts = [],
+  files,
   onDownload,
   onCopyText,
   onDeleteFile,
@@ -76,12 +74,6 @@ const FileList: React.FC<FileListProps> = ({
     
     const date = new Date(dateStr);
     return date.toLocaleString('en-IN', options);
-  };
-
-  // Truncate text for preview
-  const truncateText = (text: string, maxLength = 100): string => {
-    if (text.length <= maxLength) return text;
-    return text.substring(0, maxLength) + '...';
   };
 
   // Handle file deletion
@@ -141,7 +133,8 @@ const FileList: React.FC<FileListProps> = ({
   };
 
   // Move hasSharedItems definition here, before it's used
-  const hasSharedItems = files.length > 0 || (texts && texts.length > 0);
+  // Simplified hasSharedItems check - if texts aren't being rendered, we could simplify this
+  const hasSharedItems = files.length > 0;
 
   return (
     <div className="glass-card rounded-lg p-6 animate-fade-in">
