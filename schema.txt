@@ -1,0 +1,23 @@
+db.com.id
+└── network_connections
+    ├── id (INT)
+    ├── ip_address (TEXT)
+    ├── network_prefix (TEXT)
+    ├── created_at (TIMESTAMP)
+    └── last_update (TIMESTAMP)
+
+└── shared_texts
+    ├── id (INT)
+    ├── content (TEXT)
+    ├── network_prefix (TEXT)
+    └── shared_at (TIMESTAMP)
+
+└── shared_files
+    ├── id (INT)
+    ├── name (TEXT)
+    ├── size (INT)
+    ├── type (TEXT)
+    ├── url (TEXT)
+    ├── network_prefix (TEXT)
+    ├── shared_at (TIMESTAMP)
+    └── user_id (INT)

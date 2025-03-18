@@ -1,0 +1,134 @@
+policies = {
+    "table_policies": {
+        "network_connections": {
+            "RLS": "Enabled",
+            "policies": [
+                {
+                    "operation": "INSERT",
+                    "description": "Anyone can insert their own IP.",
+                    "applied_to": "public role"
+                },
+                {
+                    "operation": "SELECT",
+                    "description": "Anyone can see IPs with same network prefix.",
+                    "applied_to": "public role"
+                },
+                {
+                    "operation": "UPDATE",
+                    "description": "Anyone can update their own record.",
+                    "applied_to": "public role"
+                }
+            ]
+        },
+        "shared_files": {
+            "RLS": "Enabled",
+            "policies": [
+                {
+                    "operation": "INSERT",
+                    "description": "Anyone can insert files.",
+                    "applied_to": "public role"
+                },
+                {
+                    "operation": "SELECT",
+                    "description": "Anyone can view files from same network.",
+                    "applied_to": "public role"
+                },
+                {
+                    "policy_name": "PublicNew policy",
+                    "description": "Allow full access from same network.",
+                    "applied_to": "public role",
+                    "access": "ALL"
+                },
+                {
+                    "policy_name": "Public Access",
+                    "description": "Public Access.",
+                    "applied_to": "public role",
+                    "access": "SELECT"
+                },
+                {
+                    "policy_name": "Public Upload",
+                    "description": "Public Upload.",
+                    "applied_to": "public role",
+                    "access": "INSERT"
+                }
+            ]
+        },
+        "shared_texts": {
+            "RLS": "Enabled",
+            "policies": [
+                {
+                    "operation": "INSERT",
+                    "description": "Allow inserts from same network.",
+                    "applied_to": "public role"
+                },
+                {
+                    "operation": "UPDATE",
+                    "description": "Allow updates from same network.",
+                    "applied_to": "public role"
+                },
+                {
+                    "operation": "INSERT",
+                    "description": "Anyone can insert texts.",
+                    "applied_to": "public role"
+                },
+                {
+                    "operation": "SELECT",
+                    "description": "Anyone can view texts from same network.",
+                    "applied_to": "public role"
+                },
+                {
+                    "operation": "INSERT",
+                    "description": "Enable insert access for all users.",
+                    "applied_to": "public role"
+                },
+                {
+                    "operation": "SELECT",
+                    "description": "Enable read access for all users.",
+                    "applied_to": "public role"
+                },
+                {
+                    "operation": "UPDATE",
+                    "description": "Enable update access for all users.",
+                    "applied_to": "public role"
+                }
+            ]
+        }
+    },
+    "storage_policies": {
+        "shared_files": {
+            "bucket_policies": [
+                {
+                    "policy_name": "New policy",
+                    "access": "ALL",
+                    "description": "Allow full access from same network"
+                },
+                {
+                    "policy_name": "SELECT",
+                    "access": "SELECT",
+                    "description": "Public Access"
+                },
+                {
+                    "policy_name": "INSERT",
+                    "access": "INSERT",
+                    "description": "Public Upload"
+                }
+            ]
+        },
+        "objects": {
+            "bucket_policies": [
+                {
+                    "policy_name": "New policy",
+                    "description": "No policies created yet"
+                }
+            ]
+        },
+        "buckets": {
+            "bucket_policies": [
+                {
+                    "policy_name": "New policy",
+                    "description": "No policies created yet"
+                }
+            ]
+        }
+    }
+}
