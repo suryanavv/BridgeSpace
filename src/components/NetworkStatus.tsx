@@ -1,20 +1,30 @@
-
 import React, { useEffect, useState } from 'react';
 import { getClientIP, getNetworkPrefix, getCachedNetworkPrefix } from '@/utils/networkUtils';
 import { toast } from 'sonner';
-import { Wifi, WifiOff, RefreshCw } from 'lucide-react';
+import { Wifi, WifiOff, RefreshCw, Lock, Globe, Copy } from 'lucide-react';
+import { Button } from './ui/button';
+import { Badge } from './ui/badge';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
 
 interface NetworkStatusProps {
   onNetworkChange?: (isConnected: boolean, networkPrefix: string, ip: string) => void;
-  onRefresh?: () => void;  // Add this new prop
+  onRefresh?: () => void;  
+  isPrivateSpace?: boolean;
+  privateSpaceKey?: string;
 }
 
-const NetworkStatus: React.FC<NetworkStatusProps> = ({ onNetworkChange, onRefresh }) => {
+const NetworkStatus: React.FC<NetworkStatusProps> = ({ 
+  onNetworkChange, 
+  onRefresh,
+  isPrivateSpace = false,
+  privateSpaceKey = ''
+}) => {
   const [ip, setIp] = useState<string>('');
   const [networkPrefix, setNetworkPrefix] = useState<string>('');
   const [status, setStatus] = useState<'connected' | 'disconnected' | 'checking'>('checking');
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [hasShownToast, setHasShownToast] = useState<boolean>(false);
+  const [copied, setCopied] = useState<boolean>(false);
 
   const checkNetwork = async () => {
     try {
@@ -76,28 +86,107 @@ const NetworkStatus: React.FC<NetworkStatusProps> = ({ onNetworkChange, onRefres
     }
   };
 
-  return (
-    <div className="glass-card p-4 rounded-lg animate-fade-in">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-2">
-          {status === 'connected' ? (
-            <Wifi className="h-5 w-5 text-green-500" />
-          ) : status === 'disconnected' ? (
-            <WifiOff className="h-5 w-5 text-red-500" />
-          ) : (
-            <div className="status-indicator status-checking animate-pulse" />
-          )}
-          <span className="text-sm font-medium">
-            {status === 'connected' ? 'Connected' : 
-             status === 'disconnected' ? 'Disconnected' : 
-             'Checking...'}
-          </span>
-        </div>
-      </div>
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(true);
+      toast.success('Copied to clipboard!');
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
 
-      
+  return (
+    <div className="bg-slate-100 dark:bg-slate-800 p-3 rounded-md text-sm animate-fade-in w-full">
+      {isPrivateSpace ? (
+        <div className="flex flex-col space-y-2">
+          <div className="flex justify-between items-center">
+            <div className="flex items-center">
+              <Badge variant="outline" className="bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200 border-purple-300 dark:border-purple-700">
+                <Lock className="h-3 w-3 mr-1" /> Private Space
+              </Badge>
+            </div>
+            <div className="flex items-center space-x-1">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="p-1 h-7 w-7" 
+                onClick={handleRefresh}
+                disabled={isRefreshing}
+              >
+                <RefreshCw className={`h-3.5 w-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
+              </Button>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="p-1 h-7 w-7" 
+                      onClick={() => copyToClipboard(privateSpaceKey)}
+                    >
+                      <Copy className="h-3.5 w-3.5" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Copy private key</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
+          </div>
+          <div className="font-mono break-all bg-slate-200 dark:bg-slate-700 p-2 rounded text-xs">
+            {privateSpaceKey}
+          </div>
+        </div>
+      ) : status === 'connected' ? (
+        <div className="flex flex-col space-y-2">
+          <div className="flex justify-between items-center">
+            <Badge variant="outline" className="bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 border-green-300 dark:border-green-700">
+              <Wifi className="h-3 w-3 mr-1" /> Network Connected
+            </Badge>
+            <div className="flex items-center">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="p-1 h-7 w-7" 
+                onClick={handleRefresh}
+                disabled={isRefreshing}
+              >
+                <RefreshCw className={`h-3.5 w-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
+              </Button>
+            </div>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-medium">Network prefix:</span>
+            <span className="text-xs font-mono bg-slate-200 dark:bg-slate-700 px-2 py-1 rounded">
+              {networkPrefix}*
+            </span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-medium">Your IP:</span>
+            <span className="text-xs font-mono bg-slate-200 dark:bg-slate-700 px-2 py-1 rounded">
+              {ip}
+            </span>
+          </div>
+        </div>
+      ) : (
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <WifiOff className="h-4 w-4 text-red-500" />
+            <span className="text-sm font-medium">Network Unavailable</span>
+          </div>
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className="p-1 h-7 w-7" 
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
+          </Button>
+        </div>
+      )}
     </div>
-);
+  );
 };
 
 export default NetworkStatus;

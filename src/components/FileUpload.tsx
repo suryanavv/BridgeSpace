@@ -1,17 +1,18 @@
-
 import React, { useCallback, useState, useRef } from 'react';
 import { toast } from 'sonner';
 import { File, Upload, Loader2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { uploadFile, fetchSharedFiles } from '@/utils/networkUtils';
 
 interface FileUploadProps {
   networkConnected: boolean;
   onFilesUploaded: (files: File[]) => void;
+  privateSpaceKey?: string;
 }
 
-const FileUpload: React.FC<FileUploadProps> = ({ networkConnected, onFilesUploaded }) => {
+const FileUpload: React.FC<FileUploadProps> = ({ networkConnected, onFilesUploaded, privateSpaceKey }) => {
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -37,19 +38,19 @@ const FileUpload: React.FC<FileUploadProps> = ({ networkConnected, onFilesUpload
       const fileList = Array.from(e.dataTransfer.files);
       handleUpload(fileList);
     }
-  }, [networkConnected]);
+  }, [networkConnected, privateSpaceKey]);
 
   const handleFileInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       const fileList = Array.from(e.target.files);
       handleUpload(fileList);
     }
-  }, [networkConnected]);
+  }, [networkConnected, privateSpaceKey]);
 
   const handleUpload = async (fileList: File[]) => {
     if (!networkConnected) {
-      toast.error('Network disconnected', {
-        description: 'Please connect to a network to share files.',
+      toast.error('Not connected', {
+        description: 'Please connect to a network or enter a private space to share files.',
       });
       return;
     }
@@ -98,7 +99,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ networkConnected, onFilesUpload
         setUploadStatus(`Uploading ${i + 1}/${uniqueFiles.length}: ${file.name}`);
         
         try {
-          const fileData = await uploadFile(file, true);
+          const fileData = await uploadFile(file, privateSpaceKey);
           uploadedFiles.push(fileData);
           uploadedCount++;
           setUploadProgress(((i + 1) / uniqueFiles.length) * 100);
@@ -113,10 +114,10 @@ const FileUpload: React.FC<FileUploadProps> = ({ networkConnected, onFilesUpload
       if (uploadedFiles.length > 0) {
         if (!uploadRef.current) {
           toast.success('Upload complete', {
-            description: `Successfully shared ${uploadedCount} file${uploadedCount > 1 ? 's' : ''} on your network.`
+            description: `Successfully shared ${uploadedCount} file${uploadedCount > 1 ? 's' : ''} ${privateSpaceKey ? 'in your private space' : 'on your network'}.`
           });
           // Only update the file list once after all files are uploaded
-          const updatedFiles = await fetchSharedFiles();
+          const updatedFiles = await fetchSharedFiles(privateSpaceKey);
           onFilesUploaded(updatedFiles);
         } else {
           toast.info('Upload cancelled', {
@@ -124,7 +125,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ networkConnected, onFilesUpload
           });
           if (uploadedCount > 0) {
             // Update file list with all successfully uploaded files before cancellation
-            const updatedFiles = await fetchSharedFiles();
+            const updatedFiles = await fetchSharedFiles(privateSpaceKey);
             onFilesUploaded(updatedFiles);
           }
         }
@@ -149,40 +150,48 @@ const FileUpload: React.FC<FileUploadProps> = ({ networkConnected, onFilesUpload
   };
 
   return (
-    <div className="glass-card rounded-lg p-6 animate-fade-in">
-      <h2 className="text-lg font-medium mb-4">Share Files</h2>
+    <div className="bg-slate-100 dark:bg-slate-800 p-4 rounded-md animate-fade-in">
+      <div className="flex justify-between items-center mb-3">
+        <div className="flex items-center">
+          <Badge variant="outline" className="bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 border-blue-300 dark:border-blue-700">
+            <File className="h-3 w-3 mr-1" /> Share Files
+          </Badge>
+        </div>
+        {isUploading && (
+          <Button
+            variant="ghost" 
+            size="sm" 
+            onClick={handleCancelUpload}
+            disabled={cancelUpload}
+            className="p-1 h-7 w-7 flex items-center justify-center"
+          >
+            <X className="h-3.5 w-3.5" />
+          </Button>
+        )}
+      </div>
       
       <div
-        className={`drop-zone ${isDragging ? 'active' : ''} mb-4`}
+        className={`border-2 border-dashed ${isDragging ? 'border-primary bg-primary/5' : 'border-slate-200 dark:border-slate-700'} 
+          rounded-md transition-colors mb-3 hover:border-primary hover:bg-primary/5`}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
       >
-        <div className="flex flex-col items-center justify-center py-4">
+        <div className="flex flex-col items-center justify-center p-6">
           {isUploading ? (
             <>
-              <Loader2 className="h-10 w-10 animate-spin text-primary mb-3" />
+              <Loader2 className="h-8 w-8 animate-spin text-primary mb-3" />
               <p className="text-sm font-medium text-center mb-1">{uploadStatus}</p>
               <div className="w-full max-w-xs mb-2">
                 <Progress value={uploadProgress} className="h-2" />
               </div>
-              <p className="text-xs text-muted-foreground text-center mb-2">
+              <p className="text-xs text-muted-foreground text-center">
                 {Math.round(uploadProgress)}% complete
               </p>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleCancelUpload}
-                disabled={cancelUpload}
-                className="flex items-center gap-2"
-              >
-                <X className="h-4 w-4" />
-                {cancelUpload ? 'Cancelling...' : 'Cancel Upload'}
-              </Button>
             </>
           ) : (
             <>
-              <Upload className="h-10 w-10 text-muted-foreground mb-3" />
+              <Upload className="h-8 w-8 text-muted-foreground mb-3" />
               <p className="text-sm text-center mb-2">
                 Drag and drop files here, or{' '}
                 <label className="text-primary cursor-pointer hover:underline">
@@ -197,7 +206,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ networkConnected, onFilesUpload
                 </label>
               </p>
               <p className="text-xs text-muted-foreground text-center">
-                Files will be shared with devices on your network
+                Files will be shared with devices {privateSpaceKey ? 'in your private space' : 'on your network'}
               </p>
             </>
           )}
@@ -205,8 +214,8 @@ const FileUpload: React.FC<FileUploadProps> = ({ networkConnected, onFilesUpload
       </div>
       
       {!networkConnected && (
-        <div className="bg-yellow-50 text-yellow-800 text-xs p-2 rounded mt-2">
-          Connect to a network to share files
+        <div className="bg-yellow-50 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-200 text-xs p-2 rounded">
+          Connect to a network or enter a private space to share files
         </div>
       )}
     </div>

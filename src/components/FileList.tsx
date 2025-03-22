@@ -1,6 +1,5 @@
-
 import React from 'react';
-import { File as LucideFileIcon, Download, RefreshCw, Trash2 } from 'lucide-react';
+import { File as LucideFileIcon, FileText, Download, RefreshCw, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -17,6 +16,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import { Badge } from '@/components/ui/badge';
 
 interface SharedFile {
   id: string;
@@ -35,16 +35,18 @@ interface SharedText {
 
 interface FileListProps {
   files: SharedFile[];
+  texts?: SharedText[];  // Make texts optional
   onDownload?: (file: SharedFile) => void;
-  onCopyText?: (text: SharedText) => void;
+  onCopyText?: (text: SharedText) => void;  // Add missing prop type
   onDeleteFile?: (file: SharedFile) => void;
-  onDeleteAllFiles?: () => void;
+  onDeleteAllFiles?: () => void; // Add handler for deleting all files
   isLoading?: boolean;
   onRefresh?: () => void;
 }
 
 const FileList: React.FC<FileListProps> = ({ 
-  files,
+  files, 
+  texts = [],
   onDownload,
   onCopyText,
   onDeleteFile,
@@ -74,6 +76,12 @@ const FileList: React.FC<FileListProps> = ({
     
     const date = new Date(dateStr);
     return date.toLocaleString('en-IN', options);
+  };
+
+  // Truncate text for preview
+  const truncateText = (text: string, maxLength = 100): string => {
+    if (text.length <= maxLength) return text;
+    return text.substring(0, maxLength) + '...';
   };
 
   // Handle file deletion
@@ -133,109 +141,108 @@ const FileList: React.FC<FileListProps> = ({
   };
 
   // Move hasSharedItems definition here, before it's used
-  // Simplified hasSharedItems check - if texts aren't being rendered, we could simplify this
-  const hasSharedItems = files.length > 0;
+  const hasSharedItems = files.length > 0 || (texts && texts.length > 0);
 
   return (
-    <div className="glass-card rounded-lg p-6 animate-fade-in">
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-lg font-medium">Shared on Your Network</h2>
-        {onRefresh && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onRefresh}
-            disabled={isLoading}
-            className="h-8 w-8 p-0"
-          >
-            <RefreshCw className={cn("h-4 w-4", isLoading && "animate-spin")} />
-          </Button>
-        )}
-      </div>
-      
+    <div>
       {isLoading ? (
-        <div className="flex justify-center items-center py-12">
+        <div className="flex justify-center items-center p-8">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
-      ) : !hasSharedItems ? (
-        <div className="text-center py-8">
-          <div className="flex justify-center mb-3 text-muted-foreground">
-            <LucideFileIcon className="h-12 w-12 opacity-50" />
-          </div>
-          <h3 className="text-base font-medium mb-1">No shared files yet</h3>
-          <p className="text-sm text-muted-foreground">
-            Shared files will appear here
-          </p>
-        </div>
       ) : (
-        <div className="space-y-6">
-          <div className="animate-slide-up">
-            <div className="flex justify-between items-center mb-2">
-              <h3 className="text-sm font-medium flex items-center">
-                <LucideFileIcon className="h-4 w-4 mr-1" />
-                Files ({files.length})
-              </h3>
-              {onDeleteAllFiles && files.length > 0 && (
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="text-destructive"
-                    >
-                      Delete All
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Delete All Files</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        Are you sure you want to delete all files? This action cannot be undone.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction onClick={onDeleteAllFiles}>Delete All</AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-              )}
-            </div>
-            <div className="space-y-3 max-h-[calc(100vh-300px)] overflow-y-auto pr-2">
-              {files.map((file) => (
-                <div
-                  key={file.id}
-                  className="flex items-center p-3 border border-border rounded-md hover:bg-secondary/50 transition-colors"
-                >
-                  <div className="mr-3">{getFileIcon(file.type)}</div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{file.name}</p>
-                    <div className="flex items-center text-xs text-muted-foreground">
-                      <span>{formatSize(file.size)}</span>
-                      <span className="mx-1.5">•</span>
-                      <span>{formatDate(file.shared_at)}</span>
-                    </div>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => handleDownload(file)}
-                    >
-                      <Download className="h-4 w-4" />
-                    </Button>
-                    {onDeleteFile && (
+        <div>
+          <div className="bg-slate-100 dark:bg-slate-800 p-4 rounded-md animate-fade-in">
+            <div className="flex justify-between items-center mb-3">
+              <div className="flex items-center">
+                <Badge variant="outline" className="bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 border-green-300 dark:border-green-700">
+                  <LucideFileIcon className="h-3 w-3 mr-1" /> Shared Files
+                </Badge>
+              </div>
+              <div className="flex gap-2">
+                {onRefresh && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={onRefresh}
+                    className="p-1 h-7 w-7 flex items-center justify-center"
+                    title="Refresh files"
+                  >
+                    <RefreshCw className="h-3.5 w-3.5" />
+                  </Button>
+                )}
+                {files.length > 0 && onDeleteAllFiles && (
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
                       <Button
                         size="sm"
                         variant="ghost"
-                        onClick={() => handleDelete(file)}
+                        className="p-1 h-7 w-7 flex items-center justify-center"
+                        title="Delete all files"
                       >
-                        <Trash2 className="h-4 w-4 text-destructive" />
+                        <Trash2 className="h-3.5 w-3.5 text-destructive" />
                       </Button>
-                    )}
-                  </div>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Delete all files?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          This action cannot be undone. All shared files will be permanently deleted.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={onDeleteAllFiles}>Delete All</AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                )}
+              </div>
+            </div>
+            <div className="space-y-2 max-h-[calc(100vh-300px)] overflow-y-auto pr-1">
+              {files.length === 0 ? (
+                <div className="text-center py-6 text-muted-foreground text-sm">
+                  No files shared yet
                 </div>
-              ))}
+              ) : (
+                files.map((file) => (
+                  <div
+                    key={file.id}
+                    className="flex items-center p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-md hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                  >
+                    <div className="mr-3 text-slate-400 dark:text-slate-500">{getFileIcon(file.type)}</div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{file.name}</p>
+                      <div className="flex items-center text-xs text-muted-foreground">
+                        <span>{formatSize(file.size)}</span>
+                        <span className="mx-1.5">•</span>
+                        <span>{formatDate(file.shared_at)}</span>
+                      </div>
+                    </div>
+                    <div className="flex gap-1">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => handleDownload(file)}
+                        className="p-1 h-7 w-7 flex items-center justify-center"
+                        title="Download file"
+                      >
+                        <Download className="h-3.5 w-3.5" />
+                      </Button>
+                      {onDeleteFile && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handleDelete(file)}
+                          className="p-1 h-7 w-7 flex items-center justify-center"
+                          title="Delete file"
+                        >
+                          <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </div>

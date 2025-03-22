@@ -1,6 +1,4 @@
-
 import React from 'react';
-import NetworkStatus from '@/components/NetworkStatus';
 
 interface HeaderProps {
   onNetworkChange: (connected: boolean, prefix: string, ip: string) => void;
@@ -23,9 +21,6 @@ const Header: React.FC<HeaderProps> = ({ onNetworkChange }) => {
               <h1 className="text-2xl font-semibold tracking-tight">BridgeSpace</h1>
               <p className="text-xs text-muted-foreground">Share files and text over WiFi</p>
             </div>
-          </div>
-          <div className="flex-shrink-0">
-            <NetworkStatus onNetworkChange={onNetworkChange} />
           </div>
         </div>
       </div>

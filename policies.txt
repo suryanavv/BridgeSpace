@@ -1,134 +1,122 @@
-policies = {
-    "table_policies": {
-        "network_connections": {
-            "RLS": "Enabled",
-            "policies": [
-                {
-                    "operation": "INSERT",
-                    "description": "Anyone can insert their own IP.",
-                    "applied_to": "public role"
-                },
-                {
-                    "operation": "SELECT",
-                    "description": "Anyone can see IPs with same network prefix.",
-                    "applied_to": "public role"
-                },
-                {
-                    "operation": "UPDATE",
-                    "description": "Anyone can update their own record.",
-                    "applied_to": "public role"
-                }
-            ]
+{
+  "network_connections": {
+    "RLS_enabled": true,
+    "policies": [
+      {
+        "name": "INSERT - Anyone can insert their own IP",
+        "action": "INSERT",
+        "condition": "Anyone can insert their own IP",
+        "applied_to": "public role"
+      },
+      {
+        "name": "SELECT - Anyone can see IPs with same network prefix",
+        "action": "SELECT",
+        "condition": "Anyone can see IPs with same network prefix",
+        "applied_to": "public role"
+      },
+      {
+        "name": "UPDATE - Anyone can update their own record",
+        "action": "UPDATE",
+        "condition": "Anyone can update their own record",
+        "applied_to": "public role"
+      }
+    ]
+  },
+  "shared_files": {
+    "RLS_enabled": true,
+    "policies": [
+      {
+        "name": "DELETE - Allow delete files from same network",
+        "action": "DELETE",
+        "condition": "Allow delete files from same network",
+        "applied_to": "public role"
+      },
+      {
+        "name": "INSERT - Anyone can insert files",
+        "action": "INSERT",
+        "condition": "Anyone can insert files",
+        "applied_to": "public role"
+      },
+      {
+        "name": "SELECT - Anyone can view files from same network",
+        "action": "SELECT",
+        "condition": "Anyone can view files from same network",
+        "applied_to": "public role"
+      }
+    ]
+  },
+  "shared_texts": {
+    "RLS_enabled": true,
+    "policies": [
+      {
+        "name": "INSERT - Allow inserts from same network",
+        "action": "INSERT",
+        "condition": "Allow inserts from same network",
+        "applied_to": "public role"
+      },
+      {
+        "name": "UPDATE - Allow updates from same network",
+        "action": "UPDATE",
+        "condition": "Allow updates from same network",
+        "applied_to": "public role"
+      },
+      {
+        "name": "INSERT - Anyone can insert texts",
+        "action": "INSERT",
+        "condition": "Anyone can insert texts",
+        "applied_to": "public role"
+      },
+      {
+        "name": "SELECT - Anyone can view texts from same network",
+        "action": "SELECT",
+        "condition": "Anyone can view texts from same network",
+        "applied_to": "public role"
+      },
+      {
+        "name": "INSERT - Enable insert access for all users",
+        "action": "INSERT",
+        "condition": "Enable insert access for all users",
+        "applied_to": "public role"
+      },
+      {
+        "name": "SELECT - Enable read access for all users",
+        "action": "SELECT",
+        "condition": "Enable read access for all users",
+        "applied_to": "public role"
+      },
+      {
+        "name": "UPDATE - Enable update access for all users",
+        "action": "UPDATE",
+        "condition": "Enable update access for all users",
+        "applied_to": "public role"
+      }
+    ]
+  },
+  "Storage_policies": {
+    "shared_files": {
+      "policies": [
+        {
+          "name": "DELETE - Allow delete objects from same network",
+          "action": "DELETE",
+          "condition": "Allow delete objects from same network"
         },
-        "shared_files": {
-            "RLS": "Enabled",
-            "policies": [
-                {
-                    "operation": "INSERT",
-                    "description": "Anyone can insert files.",
-                    "applied_to": "public role"
-                },
-                {
-                    "operation": "SELECT",
-                    "description": "Anyone can view files from same network.",
-                    "applied_to": "public role"
-                },
-                {
-                    "policy_name": "PublicNew policy",
-                    "description": "Allow full access from same network.",
-                    "applied_to": "public role",
-                    "access": "ALL"
-                },
-                {
-                    "policy_name": "Public Access",
-                    "description": "Public Access.",
-                    "applied_to": "public role",
-                    "access": "SELECT"
-                },
-                {
-                    "policy_name": "Public Upload",
-                    "description": "Public Upload.",
-                    "applied_to": "public role",
-                    "access": "INSERT"
-                }
-            ]
+        {
+          "name": "ALL - Allow full access from same network",
+          "action": "ALL",
+          "condition": "Allow full access from same network"
         },
-        "shared_texts": {
-            "RLS": "Enabled",
-            "policies": [
-                {
-                    "operation": "INSERT",
-                    "description": "Allow inserts from same network.",
-                    "applied_to": "public role"
-                },
-                {
-                    "operation": "UPDATE",
-                    "description": "Allow updates from same network.",
-                    "applied_to": "public role"
-                },
-                {
-                    "operation": "INSERT",
-                    "description": "Anyone can insert texts.",
-                    "applied_to": "public role"
-                },
-                {
-                    "operation": "SELECT",
-                    "description": "Anyone can view texts from same network.",
-                    "applied_to": "public role"
-                },
-                {
-                    "operation": "INSERT",
-                    "description": "Enable insert access for all users.",
-                    "applied_to": "public role"
-                },
-                {
-                    "operation": "SELECT",
-                    "description": "Enable read access for all users.",
-                    "applied_to": "public role"
-                },
-                {
-                    "operation": "UPDATE",
-                    "description": "Enable update access for all users.",
-                    "applied_to": "public role"
-                }
-            ]
+        {
+         "name": "SELECT - Public Access",
+          "action": "SELECT",
+          "condition": "Public Access"
+        },
+        {
+         "name": "INSERT - Public Upload",
+          "action": "INSERT",
+          "condition": "Public Upload"
         }
-    },
-    "storage_policies": {
-        "shared_files": {
-            "bucket_policies": [
-                {
-                    "policy_name": "New policy",
-                    "access": "ALL",
-                    "description": "Allow full access from same network"
-                },
-                {
-                    "policy_name": "SELECT",
-                    "access": "SELECT",
-                    "description": "Public Access"
-                },
-                {
-                    "policy_name": "INSERT",
-                    "access": "INSERT",
-                    "description": "Public Upload"
-                }
-            ]
-        },
-        "objects": {
-            "bucket_policies": [
-                {
-                    "policy_name": "New policy",
-                    "description": "No policies created yet"
-                }
-            ]
-        },
-        "buckets": {
-            "bucket_policies": [
-                {
-                    "policy_name": "New policy",
-                    "description": "No policies created yet"
-                }
-            ]
-        }
+      ],
+      "summary": "4 policies in shared_files"
     }
+  }
 }

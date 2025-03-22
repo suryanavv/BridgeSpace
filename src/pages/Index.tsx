@@ -13,6 +13,8 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Upload, FileText } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 // Types for shared items
 interface SharedFile {
@@ -23,12 +25,15 @@ interface SharedFile {
   url: string;
   shared_at: string;
   network_prefix: string;
+  private_space_key?: string;
 }
 
 interface SharedText {
   id: string;
   content: string;
   shared_at: string;
+  network_prefix?: string;
+  private_space_key?: string;
 }
 
 const Index: React.FC = () => {
@@ -37,6 +42,12 @@ const Index: React.FC = () => {
   const [networkPrefix, setNetworkPrefix] = useState("");
   const [clientIP, setClientIP] = useState("");
 
+  // Private space state
+  const [isPrivateSpace, setIsPrivateSpace] = useState(false);
+  const [privateSpaceKey, setPrivateSpaceKey] = useState("");
+  const [inputKey, setInputKey] = useState("");
+  const [showPrivateSpaceModal, setShowPrivateSpaceModal] = useState(false);
+
   // Shared items state
   const [sharedFiles, setSharedFiles] = useState<SharedFile[]>([]);
   const [sharedTexts, setSharedTexts] = useState<SharedText[]>([]);
@@ -44,7 +55,7 @@ const Index: React.FC = () => {
 
   // Fetch shared items from database
   const fetchSharedItems = async () => {
-    if (!networkConnected) {
+    if (!networkConnected && !isPrivateSpace) {
       setSharedFiles([]);
       setSharedTexts([]);
       setIsLoading(false);
@@ -56,8 +67,8 @@ const Index: React.FC = () => {
     try {
       // Fetch files and texts in parallel
       const [files, texts] = await Promise.all([
-        fetchSharedFiles(),
-        fetchSharedTexts(),
+        fetchSharedFiles(isPrivateSpace ? privateSpaceKey : undefined),
+        fetchSharedTexts(isPrivateSpace ? privateSpaceKey : undefined),
       ]);
 
       setSharedFiles(files);
@@ -65,11 +76,34 @@ const Index: React.FC = () => {
     } catch (error) {
       console.error("Error fetching shared items:", error);
       toast.error("Failed to load shared items", {
-        description: "Please check your network connection and try again.",
+        description: "Please check your connection and try again.",
       });
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Enter private space
+  const enterPrivateSpace = () => {
+    if (!inputKey) {
+      toast.error("Please enter a secret key");
+      return;
+    }
+    setIsPrivateSpace(true);
+    setPrivateSpaceKey(inputKey);
+    setNetworkConnected(false); // Disable network mode while in a private space
+    setShowPrivateSpaceModal(false);
+    fetchSharedItems();
+    toast.success(`Entered private space: ${inputKey}`);
+  };
+
+  // Exit private space
+  const exitPrivateSpace = () => {
+    setIsPrivateSpace(false);
+    setPrivateSpaceKey("");
+    setInputKey("");
+    fetchSharedItems();
+    toast.success("Returned to network mode");
   };
 
   // Handle network status change
@@ -85,8 +119,8 @@ const Index: React.FC = () => {
     // Fetch shared items when network status changes
     if (connected && prefix !== networkPrefix) {
       fetchSharedItems();
-    } else if (!connected) {
-      // Clear shared items when disconnected
+    } else if (!connected && !isPrivateSpace) {
+      // Clear shared items when disconnected (if not in private space)
       setSharedFiles([]);
       setSharedTexts([]);
     }
@@ -149,19 +183,19 @@ const Index: React.FC = () => {
     }
   };
 
-  // Refresh shared items when component mounts or network changes
+  // Refresh shared items when component mounts or network/private space changes
   useEffect(() => {
-    if (networkConnected) {
+    if (networkConnected || isPrivateSpace) {
       fetchSharedItems();
     }
-  }, [networkConnected, networkPrefix]);
+  }, [networkConnected, networkPrefix, isPrivateSpace, privateSpaceKey]);
 
   // Refresh shared items periodically
-  // Update the useEffect for real-time updates
+  // Setup real-time updates with Supabase
   useEffect(() => {
-    if (!networkConnected || !networkPrefix) return;
+    if (!networkConnected && !isPrivateSpace) return;
 
-    const channel = supabase.channel("shared_files_changes");
+    const channel = supabase.channel("shared_items_changes");
 
     const subscription = channel
       .on(
@@ -170,7 +204,9 @@ const Index: React.FC = () => {
           event: "*",
           schema: "public",
           table: "shared_files",
-          filter: `network_prefix=eq.${networkPrefix}`,
+          filter: isPrivateSpace 
+            ? `private_space_key=eq.${privateSpaceKey}` 
+            : `network_prefix=eq.${networkPrefix}`,
         },
         () => {
           // Refresh the file list when changes occur
@@ -183,7 +219,7 @@ const Index: React.FC = () => {
       subscription.unsubscribe();
       channel.unsubscribe();
     };
-  }, [networkConnected, networkPrefix]);
+  }, [networkConnected, networkPrefix, isPrivateSpace, privateSpaceKey]);
 
   const getStoragePathFromUrl = (url: string): string => {
     try {
@@ -203,148 +239,100 @@ const Index: React.FC = () => {
         if (parts.length > 1) {
           return decodeURIComponent(parts[1]);
         }
-      } else if (pathname.includes("/public/shared_files/")) {
-        // Handle public URL format
-        const parts = pathname.split("/public/shared_files/");
-        if (parts.length > 1) {
-          return decodeURIComponent(parts[1]);
-        }
       }
 
-      throw new Error("Could not parse storage path from URL");
+      throw new Error("Could not extract storage path from URL");
     } catch (error) {
-      console.error("Error parsing URL:", error, url);
-      throw new Error("Invalid storage URL");
+      console.error("Error extracting path from URL:", error);
+      return "";
     }
   };
 
   const handleDeleteFile = async (file: SharedFile) => {
+    if (!file || !file.url) {
+      toast.error("Invalid file data");
+      return;
+    }
+
     try {
-      console.log("Deleting file:", file);
+      // Extract the storage path
+      const storagePath = getStoragePathFromUrl(file.url);
 
-      // Get the current network prefix to ensure we're only deleting files from our network
-      const currentNetworkPrefix = getCachedNetworkPrefix();
-      if (!currentNetworkPrefix) {
-        throw new Error(
-          "Network not identified. Please reconnect to your network.",
-        );
+      if (!storagePath) {
+        throw new Error("Could not determine storage path");
       }
 
-      if (file.network_prefix !== currentNetworkPrefix) {
-        throw new Error("Cannot delete files from other networks");
+      // Delete from storage
+      const { error: storageError } = await supabase.storage
+        .from("shared_files")
+        .remove([storagePath]);
+
+      if (storageError) {
+        console.warn("Storage delete error:", storageError);
+        // Continue anyway, as we want to remove from database
       }
 
-      // Extract storage path before database deletion
-      let storagePath = "";
-      try {
-        storagePath = getStoragePathFromUrl(file.url);
-        console.log("Storage path for deletion:", storagePath);
-      } catch (pathError) {
-        console.warn("Could not parse storage path:", pathError);
-        // Continue with database deletion even if we can't parse the storage path
-      }
-
-      // First delete from database
+      // Delete from database
       const { error: dbError } = await supabase
         .from("shared_files")
         .delete()
-        .eq("id", file.id)
-        .eq("network_prefix", currentNetworkPrefix); // Add network prefix check for extra security
+        .eq("id", file.id);
 
-      if (dbError) {
-        console.error("Database deletion error:", dbError);
-        throw new Error(`Database deletion failed: ${dbError.message}`);
-      }
-
-      // Then try to delete from storage if we have a valid path
-      if (storagePath) {
-        try {
-          console.log("Attempting to delete from storage:", storagePath);
-
-          const { error: storageError } = await supabase.storage
-            .from("shared_files")
-            .remove([storagePath]);
-
-          if (storageError) {
-            console.warn(`Storage deletion warning: ${storageError.message}`);
-            // Don't throw here, we already deleted from database which is the important part
-          }
-        } catch (storageError) {
-          console.warn("Storage deletion warning:", storageError);
-          // Continue even if storage deletion fails
-        }
-      }
-
-      // Refresh the file list
-      await fetchSharedItems();
+      if (dbError) throw dbError;
 
       toast.success("File deleted", {
-        description: `Successfully deleted ${file.name}`,
+        description: `${file.name} has been removed`,
       });
+
+      // Refresh file list
+      fetchSharedItems();
     } catch (error) {
-      console.error("Error deleting file:", error);
+      console.error("Delete error:", error);
       toast.error("Failed to delete file", {
-        description:
-          error instanceof Error
-            ? error.message
-            : "Please try again later or check your permissions.",
+        description: "An error occurred while trying to delete the file",
       });
     }
   };
 
   const handleDeleteAllFiles = async () => {
+    if (sharedFiles.length === 0) return;
+
     try {
-      // Get the current network prefix to ensure we're only deleting files from our network
-      const currentNetworkPrefix = getCachedNetworkPrefix();
-      if (!currentNetworkPrefix) {
-        throw new Error(
-          "Network not identified. Please reconnect to your network."
-        );
-      }
+      // Extract paths for all files
+      const storagePaths = sharedFiles
+        .map((file) => getStoragePathFromUrl(file.url))
+        .filter(Boolean);
 
-      // First delete all files from database for the current network
-      const { error: dbError } = await supabase
-        .from("shared_files")
-        .delete()
-        .eq("network_prefix", currentNetworkPrefix);
+      // Delete all files from storage
+      if (storagePaths.length > 0) {
+        const { error: storageError } = await supabase.storage
+          .from("shared_files")
+          .remove(storagePaths as string[]);
 
-      if (dbError) {
-        console.error("Database deletion error:", dbError);
-        throw new Error(`Database deletion failed: ${dbError.message}`);
-      }
-
-      // Then try to delete all files from storage
-      // Note: This is a best-effort operation as we can't guarantee all files will be deleted
-      // from storage if the paths can't be parsed correctly
-      for (const file of sharedFiles) {
-        if (file.network_prefix !== currentNetworkPrefix) continue;
-        
-        try {
-          const storagePath = getStoragePathFromUrl(file.url);
-          if (storagePath) {
-            await supabase.storage
-              .from("shared_files")
-              .remove([storagePath]);
-          }
-        } catch (storageError) {
-          console.warn("Storage deletion warning for file:", file.name, storageError);
-          // Continue even if individual storage deletion fails
+        if (storageError) {
+          console.warn("Storage delete error:", storageError);
+          // Continue anyway, as we want to remove from database
         }
       }
 
-      // Refresh the file list
-      await fetchSharedItems();
+      // Delete all files from database for this network prefix or private space
+      const { error: dbError } = await supabase
+        .from("shared_files")
+        .delete()
+        .eq(isPrivateSpace ? "private_space_key" : "network_prefix", isPrivateSpace ? privateSpaceKey : networkPrefix);
+
+      if (dbError) throw dbError;
 
       toast.success("All files deleted", {
-        description: `Successfully deleted all files from your network`,
+        description: "All files have been removed",
       });
+
+      // Refresh file list
+      fetchSharedItems();
     } catch (error) {
-      console.error("Error deleting all files:", error);
-      toast.error("Failed to delete all files", {
-        description:
-          error instanceof Error
-            ? error.message
-            : "Please try again later or check your permissions.",
+      console.error("Delete all error:", error);
+      toast.error("Failed to delete files", {
+        description: "An error occurred while trying to delete files",
       });
     }
   };
@@ -352,55 +340,99 @@ const Index: React.FC = () => {
   return (
     <div className="min-h-screen bg-background">
       <Header onNetworkChange={handleNetworkChange} />
-
-      <div className="mt-2 text-center">
-        <p className="text-xs text-muted-foreground">
-          {networkConnected ? (
-            <>
-              Connected to network {networkPrefix}.* as {clientIP}
-            </>
-          ) : (
-            "Not connected to any network"
-          )}
-        </p>
-      </div>
-
-      <main className="container max-w-5xl mx-auto px-4 pb-20">
-        <div className="grid grid-cols-1 gap-6 mt-6">
-          <div className="col-span-1">
-            <Tabs defaultValue="file" className="w-full">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="file" className="flex items-center gap-2">
-                  <Upload className="h-4 w-4" />
-                  File
-                </TabsTrigger>
-                <TabsTrigger value="text" className="flex items-center gap-2">
-                  <FileText className="h-4 w-4" />
-                  Text
-                </TabsTrigger>
-              </TabsList>
-              <TabsContent value="file" className="mt-4 space-y-6">
-                <FileUpload
-                  networkConnected={networkConnected}
-                  onFilesUploaded={handleFilesUploaded}
-                />
-                <FileList
-                  files={sharedFiles}
-                  onDownload={handleDownload}
-                  onDeleteFile={handleDeleteFile}
-                  onDeleteAllFiles={handleDeleteAllFiles}
-                  isLoading={isLoading}
-                />
-              </TabsContent>
-              <TabsContent value="text" className="mt-4">
-                <TextShare
-                  networkConnected={networkConnected}
-                  onTextShared={handleTextShared}
-                />
-              </TabsContent>
-            </Tabs>
+      
+      <main className="container max-w-5xl mx-auto px-4 mt-4 pb-20">
+        <div className="w-full mb-6">
+          <NetworkStatus 
+            onNetworkChange={handleNetworkChange}
+            onRefresh={fetchSharedItems}
+            isPrivateSpace={isPrivateSpace}
+            privateSpaceKey={privateSpaceKey}
+          />
+          
+          <div className="flex justify-end mt-3">
+            {isPrivateSpace ? (
+              <Button 
+                onClick={exitPrivateSpace} 
+                size="sm"
+                variant="outline"
+                className="text-xs"
+              >
+                Exit Private Space
+              </Button>
+            ) : (
+              <Button 
+                onClick={() => setShowPrivateSpaceModal(true)} 
+                size="sm"
+                variant="outline"
+                className="text-xs"
+              >
+                Create/Join Private Space
+              </Button>
+            )}
           </div>
         </div>
+
+        {showPrivateSpaceModal && (
+          <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+            <div className="bg-card p-6 rounded-lg shadow-lg max-w-md w-full">
+              <h2 className="text-lg font-medium mb-4">Enter Private Space Key</h2>
+              <p className="text-sm text-muted-foreground mb-4">
+                Enter a secret key to create or join a private space. Anyone with this key will be able to access shared files and texts.
+              </p>
+              <Input
+                type="text"
+                value={inputKey}
+                onChange={(e) => setInputKey(e.target.value)}
+                placeholder="e.g., mySecretSpace123"
+                className="w-full mb-4"
+              />
+              <div className="flex gap-2 justify-end">
+                <Button 
+                  variant="outline" 
+                  onClick={() => setShowPrivateSpaceModal(false)}
+                >
+                  Cancel
+                </Button>
+                <Button onClick={enterPrivateSpace}>
+                  Enter
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <Tabs defaultValue="file" className="w-full mt-6">
+          <TabsList className="grid w-full grid-cols-2 bg-slate-200 dark:bg-slate-700 p-1 rounded-md">
+            <TabsTrigger value="file" className="rounded-sm data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:text-primary">
+              <Upload className="h-4 w-4 mr-2" /> File
+            </TabsTrigger>
+            <TabsTrigger value="text" className="rounded-sm data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:text-primary">
+              <FileText className="h-4 w-4 mr-2" /> Text
+            </TabsTrigger>
+          </TabsList>
+          <TabsContent value="file" className="mt-4 space-y-6">
+            <FileUpload
+              networkConnected={networkConnected || isPrivateSpace}
+              onFilesUploaded={handleFilesUploaded}
+              privateSpaceKey={isPrivateSpace ? privateSpaceKey : undefined}
+            />
+            <FileList
+              files={sharedFiles}
+              onDownload={handleDownload}
+              onDeleteFile={handleDeleteFile}
+              onDeleteAllFiles={handleDeleteAllFiles}
+              isLoading={isLoading}
+            />
+          </TabsContent>
+          <TabsContent value="text" className="mt-4">
+            <TextShare
+              networkConnected={networkConnected || isPrivateSpace}
+              onTextShared={handleTextShared}
+              privateSpaceKey={isPrivateSpace ? privateSpaceKey : undefined}
+            />
+          </TabsContent>
+        </Tabs>
       </main>
     </div>
   );

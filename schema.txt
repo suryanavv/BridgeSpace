@@ -1,23 +1,24 @@
 db.com.id
-└── network_connections
-    ├── id (INT)
-    ├── ip_address (TEXT)
-    ├── network_prefix (TEXT)
-    ├── created_at (TIMESTAMP)
-    └── last_update (TIMESTAMP)
+├── network_connections
+│   ├── id (UUID)
+│   ├── ip_address (TEXT)
+│   ├── network_prefix (TEXT)
+│   ├── created_at (TIMESTAMPTZ)
+│   └── last_active (TIMESTAMPTZ)
 
-└── shared_texts
-    ├── id (INT)
-    ├── content (TEXT)
-    ├── network_prefix (TEXT)
-    └── shared_at (TIMESTAMP)
+├── shared_texts
+│   ├── id (UUID)
+│   ├── content (TEXT)
+│   ├── network_prefix (TEXT)
+│   ├── shared_at (TIMESTAMPTZ)
+│   └── private_space_key (TEXT)
 
 └── shared_files
-    ├── id (INT)
+    ├── id (UUID)
     ├── name (TEXT)
-    ├── size (INT)
+    ├── size (INT8)
     ├── type (TEXT)
     ├── url (TEXT)
     ├── network_prefix (TEXT)
-    ├── shared_at (TIMESTAMP)
-    └── user_id (INT)
+    ├── shared_at (TIMESTAMPTZ)
+    └── private_space_key (TEXT)
