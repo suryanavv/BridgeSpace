@@ -162,7 +162,7 @@ const TextShare: React.FC<TextShareProps> = ({ networkConnected, onTextShared, p
         </div>
         <Button
           onClick={handleSave}
-          disabled={!networkConnected || !text.trim() || isSaving || text === lastSavedContent}
+          disabled={!networkConnected || isSaving || text === lastSavedContent}
           size="sm"
           className="gap-1.5"
         >
