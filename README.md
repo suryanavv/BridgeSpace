@@ -1,69 +1,159 @@
-# Welcome to your Lovable project
+# BridgeSpace
 
-## Project info
+BridgeSpace is a modern file and text sharing application that allows users to share content over WiFi networks or in private spaces using secret keys. It provides a seamless way to transfer files and collaborate on text without requiring user accounts or complex setup.
 
-**URL**: https://lovable.dev/projects/afdbcdaa-248c-460e-859e-0b76fca54998
+![BridgeSpace Logo](/public/rocket.svg)
 
-## How can I edit this code?
+## Features
 
-There are several ways of editing your application.
+- **Network-Based Sharing**: Automatically detect and share with devices on the same network
+- **File Sharing**: Upload and share files with other devices on your network
+- **Text Sharing**: Collaborate on text in real-time with automatic saving
+- **Private Spaces**: Create or join private spaces using secret keys for secure sharing
+- **Real-time Updates**: See changes instantly with real-time synchronization
+- **Responsive Design**: Works on desktop and mobile devices
+- **Automatic Cleanup**: Old files are automatically removed after 7 days
 
-**Use Lovable**
+## Technologies
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/afdbcdaa-248c-460e-859e-0b76fca54998) and start prompting.
+- **Frontend**: React, TypeScript, Vite
+- **Styling**: Tailwind CSS, shadcn/ui components
+- **Backend**: Supabase (Database, Storage, Edge Functions, Real-time)
+- **Routing**: React Router
+- **State Management**: React Query
+- **Notifications**: Sonner toast notifications
 
-Changes made via Lovable will be committed automatically to this repo.
+## Installation
 
-**Use your preferred IDE**
+### Prerequisites
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+- Node.js (v16 or higher)
+- npm or yarn
+- Supabase account
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+### Setup
 
-Follow these steps:
+1. Clone the repository
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+```bash
+git clone https://github.com/suryanavv/BridgeSpace.git
+cd BridgeSpace
 ```
 
-**Edit a file directly in GitHub**
+2. Install dependencies
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+```bash
+npm install
+# or
+yarn install
+```
 
-**Use GitHub Codespaces**
+3. Set up environment variables
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+Create a `.env` file in the root directory with the following variables:
 
-## What technologies are used for this project?
+```
+VITE_SUPABASE_URL=your_supabase_url
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+```
 
-This project is built with .
+4. Set up Supabase
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+Follow the instructions in the [Supabase Setup Guide](./supabase_setup.md) to configure your Supabase project with the required tables, storage buckets, and edge functions.
 
-## How can I deploy this project?
+## Development
 
-Simply open [Lovable](https://lovable.dev/projects/afdbcdaa-248c-460e-859e-0b76fca54998) and click on Share -> Publish.
+Start the development server:
 
-## I want to use a custom domain - is that possible?
+```bash
+npm run dev
+# or
+yarn dev
+```
 
-We don't support custom domains (yet). If you want to deploy your project under your own domain then we recommend using Netlify. Visit our docs for more details: [Custom domains](https://docs.lovable.dev/tips-tricks/custom-domain/)
+The application will be available at `http://localhost:8080`.
+
+## Building for Production
+
+```bash
+npm run build
+# or
+yarn build
+```
+
+The built files will be in the `dist` directory.
+
+## Usage
+
+### Sharing Files
+
+1. Connect to the same WiFi network as the recipient
+2. Upload files using the File tab
+3. Files will be automatically available to other devices on the same network
+
+### Using Private Spaces
+
+1. Click "Create/Join Private Space"
+2. Enter a secret key
+3. Share this key with others who need access to your shared content
+4. Others can join the same private space using the key
+
+### Text Sharing
+
+1. Navigate to the Text tab
+2. Start typing in the editor
+3. Content is automatically saved and shared with others on your network or in your private space
+
+## Project Structure
+
+```
+├── public/                # Static assets
+├── src/
+│   ├── components/        # UI components
+│   │   ├── ui/            # Base UI components (shadcn/ui)
+│   │   └── ...            # Application-specific components
+│   ├── hooks/             # Custom React hooks
+│   ├── integrations/      # External service integrations
+│   │   └── supabase/      # Supabase client and types
+│   ├── lib/               # Utility libraries
+│   ├── pages/             # Page components
+│   ├── types/             # TypeScript type definitions
+│   └── utils/             # Utility functions
+├── supabase/              # Supabase configuration
+│   ├── functions/         # Edge functions
+│   └── migrations/        # Database migrations
+└── ...                    # Configuration files
+```
+
+## Supabase Setup
+
+BridgeSpace requires a properly configured Supabase project to function. The setup includes:
+
+- Database tables for storing file metadata and shared text
+- Storage buckets for file uploads
+- Edge functions for IP detection
+- Row-Level Security (RLS) policies
+- Scheduled jobs for maintenance
+
+Detailed setup instructions are available in the [Supabase Setup Guide](./supabase_setup.md).
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## Acknowledgements
+
+- [Supabase](https://supabase.io/) for the backend infrastructure
+- [shadcn/ui](https://ui.shadcn.com/) for the UI components
+- [Tailwind CSS](https://tailwindcss.com/) for styling
+- [Vite](https://vitejs.dev/) for the build system

@@ -133,7 +133,7 @@ const NetworkStatus: React.FC<NetworkStatusProps> = ({
               </TooltipProvider>
             </div>
           </div>
-          <div className="font-mono break-all bg-slate-200 dark:bg-slate-700 p-2 rounded text-xs">
+          <div className="font-mono break-all bg-slate-200 dark:bg-slate-700 p-2 rounded text-sm">
             {privateSpaceKey}
           </div>
         </div>

@@ -18,7 +18,7 @@ const TextShare: React.FC<TextShareProps> = ({ networkConnected, onTextShared, p
   const [text, setText] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [lastSavedContent, setLastSavedContent] = useState('');
-  const [autoSaveStatus, setAutoSaveStatus] = useState<'saved' | 'saving'>('saved');
+  const [autoSaveStatus, setAutoSaveStatus] = useState<'saved' | 'saving' | 'unsaved'>('saved');
   const saveInProgress = useRef(false);
   const maxLength = 5000;
 
@@ -35,16 +35,15 @@ const TextShare: React.FC<TextShareProps> = ({ networkConnected, onTextShared, p
       
       setLastSavedContent(newContent);
       onTextShared(newContent);
+      setAutoSaveStatus('saved');
       toast.success('Changes saved successfully');
     } catch (error) {
       console.error('Error saving text:', error);
+      setAutoSaveStatus('unsaved');
       toast.error('Failed to save changes');
     } finally {
       saveInProgress.current = false;
       setIsSaving(false);
-      setTimeout(() => {
-        setAutoSaveStatus('saved');
-      }, 1000);
     }
   }, [networkConnected, onTextShared, privateSpaceKey]);
 
@@ -52,7 +51,7 @@ const TextShare: React.FC<TextShareProps> = ({ networkConnected, onTextShared, p
   const debouncedSave = useCallback(
     debounce((newContent: string) => {
       saveContent(newContent);
-    }, 1000),
+    }, 10000),
     [saveContent]
   );
 
@@ -62,7 +61,7 @@ const TextShare: React.FC<TextShareProps> = ({ networkConnected, onTextShared, p
     if (newContent.length <= maxLength) {
       setText(newContent);
       if (newContent !== lastSavedContent) {
-        setAutoSaveStatus('saving');
+        setAutoSaveStatus('unsaved');
         debouncedSave(newContent);
       }
     }
@@ -135,10 +134,12 @@ const TextShare: React.FC<TextShareProps> = ({ networkConnected, onTextShared, p
           className={`transition-colors duration-300 ${
             autoSaveStatus === 'saving' 
               ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-700'
+              : autoSaveStatus === 'unsaved'
+              ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 border-red-300 dark:border-red-700'
               : 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 border-green-300 dark:border-green-700'
           }`}
         >
-          {autoSaveStatus === 'saving' ? 'Saving...' : 'Saved'}
+          {autoSaveStatus === 'saving' ? 'Saving...' : autoSaveStatus === 'unsaved' ? 'Unsaved' : 'Saved'}
         </Badge>
       </div>
 
@@ -151,8 +152,13 @@ const TextShare: React.FC<TextShareProps> = ({ networkConnected, onTextShared, p
       />
       
       <div className="flex justify-between items-center">
-        <div className="text-xs text-slate-500 dark:text-slate-400">
-          {text.length}/{maxLength} characters
+        <div className="flex flex-col gap-1">
+          <div className="text-xs text-slate-500 dark:text-slate-400">
+            {text.length}/{maxLength} characters
+          </div>
+          <div className="text-xs text-slate-500 dark:text-slate-400">
+            Auto-saves every 10 seconds
+          </div>
         </div>
         <Button
           onClick={handleSave}

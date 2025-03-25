@@ -12,9 +12,19 @@ import {
 } from "@/utils/networkUtils";
 import { supabase } from "@/integrations/supabase/client";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Upload, FileText } from "lucide-react";
+import { Upload, FileText, Lock, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 // Types for shared items
 interface SharedFile {
@@ -356,8 +366,9 @@ const Index: React.FC = () => {
                 onClick={exitPrivateSpace} 
                 size="sm"
                 variant="outline"
-                className="text-xs"
+                className="text-xs mx-auto flex items-center gap-1.5"
               >
+                <LogOut className="h-3.5 w-3.5" />
                 Exit Private Space
               </Button>
             ) : (
@@ -365,42 +376,40 @@ const Index: React.FC = () => {
                 onClick={() => setShowPrivateSpaceModal(true)} 
                 size="sm"
                 variant="outline"
-                className="text-xs"
+                className="text-xs mx-auto flex items-center gap-1.5"
               >
+                <Lock className="h-3.5 w-3.5" />
                 Create/Join Private Space
               </Button>
             )}
           </div>
         </div>
 
-        {showPrivateSpaceModal && (
-          <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
-            <div className="bg-card p-6 rounded-lg shadow-lg max-w-md w-full">
-              <h2 className="text-lg font-medium mb-4">Enter Private Space Key</h2>
-              <p className="text-sm text-muted-foreground mb-4">
-                Enter a secret key to create or join a private space. Anyone with this key will be able to access shared files and texts.
-              </p>
-              <Input
-                type="text"
-                value={inputKey}
-                onChange={(e) => setInputKey(e.target.value)}
-                placeholder="e.g., mySecretSpace123"
-                className="w-full mb-4"
-              />
-              <div className="flex gap-2 justify-end">
-                <Button 
-                  variant="outline" 
-                  onClick={() => setShowPrivateSpaceModal(false)}
-                >
-                  Cancel
-                </Button>
-                <Button onClick={enterPrivateSpace}>
-                  Enter
-                </Button>
-              </div>
-            </div>
-          </div>
-        )}
+        <AlertDialog open={showPrivateSpaceModal} onOpenChange={setShowPrivateSpaceModal}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Enter Private Space Key</AlertDialogTitle>
+              <AlertDialogDescription>
+                Enter a secret key to create or join a private space.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <Input
+              type="text"
+              value={inputKey}
+              onChange={(e) => setInputKey(e.target.value)}
+              placeholder="e.g., mySecretSpace123"
+              className="w-full"
+            />
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => setShowPrivateSpaceModal(false)}>
+                Cancel
+              </AlertDialogCancel>
+              <AlertDialogAction onClick={enterPrivateSpace} className="bg-primary hover:bg-primary/90">
+                Enter
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
         <Tabs defaultValue="file" className="w-full mt-6">
           <TabsList className="grid w-full grid-cols-2 bg-slate-200 dark:bg-slate-700 p-1 rounded-md">
