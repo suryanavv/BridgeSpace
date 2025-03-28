@@ -4,11 +4,11 @@ import { File, Upload, Loader2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { uploadFile, fetchSharedFiles } from '@/utils/networkUtils';
+import { uploadFile, fetchSharedFiles, FileResponse } from '@/utils/networkUtils';
 
 interface FileUploadProps {
   networkConnected: boolean;
-  onFilesUploaded: (files: File[]) => void;
+  onFilesUploaded: (files: FileResponse[]) => void;
   privateSpaceKey?: string;
 }
 
@@ -170,48 +170,50 @@ const FileUpload: React.FC<FileUploadProps> = ({ networkConnected, onFilesUpload
         )}
       </div>
       
-      <div
-        className={`border-2 border-dashed ${isDragging ? 'border-primary bg-primary/5' : 'border-slate-200 dark:border-slate-700'} 
-          rounded-md transition-colors mb-3 hover:border-primary hover:bg-primary/5`}
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-        onDrop={handleDrop}
-      >
-        <div className="flex flex-col items-center justify-center p-6">
-          {isUploading ? (
-            <>
-              <Loader2 className="h-8 w-8 animate-spin text-primary mb-3" />
-              <p className="text-sm font-medium text-center mb-1">{uploadStatus}</p>
-              <div className="w-full max-w-xs mb-2">
-                <Progress value={uploadProgress} className="h-2" />
-              </div>
-              <p className="text-xs text-muted-foreground text-center">
-                {Math.round(uploadProgress)}% complete
-              </p>
-            </>
-          ) : (
-            <>
-              <Upload className="h-8 w-8 text-muted-foreground mb-3" />
-              <p className="text-sm text-center mb-2">
-                Drag and drop files here, or{' '}
-                <label className="text-primary cursor-pointer hover:underline">
-                  browse
-                  <input
-                    type="file"
-                    multiple
-                    className="hidden"
-                    onChange={handleFileInputChange}
-                    disabled={!networkConnected || isUploading}
-                  />
-                </label>
-              </p>
-              <p className="text-xs text-muted-foreground text-center">
-                Files will be shared with devices {privateSpaceKey ? 'in your private space' : 'on your network'}
-              </p>
-            </>
-          )}
+      <label className="block w-full cursor-pointer">
+        <input
+          type="file"
+          multiple
+          className="hidden"
+          onChange={handleFileInputChange}
+          disabled={!networkConnected || isUploading}
+        />
+        <div
+          className={`border-2 border-dashed ${isDragging ? 'border-primary bg-primary/5' : 'border-slate-200 dark:border-slate-700'} 
+            rounded-md transition-colors mb-3 hover:border-primary hover:bg-primary/5 cursor-pointer`}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+        >
+          <div className="flex flex-col items-center justify-center p-6">
+            {isUploading ? (
+              <>
+                <Loader2 className="h-8 w-8 animate-spin text-primary mb-3" />
+                <p className="text-sm font-medium text-center mb-1">{uploadStatus}</p>
+                <div className="w-full max-w-xs mb-2">
+                  <Progress value={uploadProgress} className="h-2" />
+                </div>
+                <p className="text-xs text-muted-foreground text-center">
+                  {Math.round(uploadProgress)}% complete
+                </p>
+              </>
+            ) : (
+              <>
+                <Upload className="h-8 w-8 text-muted-foreground mb-3" />
+                <p className="text-sm text-center mb-2">
+                  Drag and drop files here, or{' '}
+                  <span className="text-primary hover:underline">
+                    browse
+                  </span>
+                </p>
+                <p className="text-xs text-muted-foreground text-center">
+                  Files will be shared with devices {privateSpaceKey ? 'in your private space' : 'on your network'}
+                </p>
+              </>
+            )}
+          </div>
         </div>
-      </div>
+      </label>
       
       {!networkConnected && (
         <div className="bg-yellow-50 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-200 text-xs p-2 rounded">

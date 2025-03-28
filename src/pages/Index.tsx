@@ -9,6 +9,7 @@ import {
   fetchSharedFiles,
   fetchSharedTexts,
   getCachedNetworkPrefix,
+  FileResponse,
 } from "@/utils/networkUtils";
 import { supabase } from "@/integrations/supabase/client";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -27,17 +28,6 @@ import {
 } from "@/components/ui/alert-dialog";
 
 // Types for shared items
-interface SharedFile {
-  id: string;
-  name: string;
-  size: number;
-  type: string;
-  url: string;
-  shared_at: string;
-  network_prefix: string;
-  private_space_key?: string;
-}
-
 interface SharedText {
   id: string;
   content: string;
@@ -59,7 +49,7 @@ const Index: React.FC = () => {
   const [showPrivateSpaceModal, setShowPrivateSpaceModal] = useState(false);
 
   // Shared items state
-  const [sharedFiles, setSharedFiles] = useState<SharedFile[]>([]);
+  const [sharedFiles, setSharedFiles] = useState<FileResponse[]>([]);
   const [sharedTexts, setSharedTexts] = useState<SharedText[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -137,7 +127,7 @@ const Index: React.FC = () => {
   };
 
   // Handle file upload/share
-  const handleFilesUploaded = (files: File[]) => {
+  const handleFilesUploaded = (files: FileResponse[]) => {
     // Refresh the file list after uploading
     fetchSharedItems();
   };
@@ -149,7 +139,7 @@ const Index: React.FC = () => {
   };
 
   // Handle file download
-  const handleDownload = async (file: SharedFile) => {
+  const handleDownload = async (file: FileResponse) => {
     try {
       // Extract the file path from the URL
       const fileUrl = new URL(file.url);
@@ -258,7 +248,7 @@ const Index: React.FC = () => {
     }
   };
 
-  const handleDeleteFile = async (file: SharedFile) => {
+  const handleDeleteFile = async (file: FileResponse) => {
     if (!file || !file.url) {
       toast.error("Invalid file data");
       return;
@@ -393,13 +383,19 @@ const Index: React.FC = () => {
                 Enter a secret key to create or join a private space.
               </AlertDialogDescription>
             </AlertDialogHeader>
-            <Input
-              type="text"
-              value={inputKey}
-              onChange={(e) => setInputKey(e.target.value)}
-              placeholder="e.g., mySecretSpace123"
-              className="w-full"
-            />
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              enterPrivateSpace();
+            }}>
+              <Input
+                type="text"
+                value={inputKey}
+                onChange={(e) => setInputKey(e.target.value)}
+                placeholder="e.g., mySecretSpace123"
+                className="w-full"
+                autoFocus
+              />
+            </form>
             <AlertDialogFooter>
               <AlertDialogCancel onClick={() => setShowPrivateSpaceModal(false)}>
                 Cancel

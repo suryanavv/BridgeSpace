@@ -28,15 +28,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
-
-interface SharedFile {
-  id: string;
-  name: string;
-  size: number;
-  type: string;
-  url: string;
-  shared_at: string;
-}
+import { FileResponse } from "@/utils/networkUtils";
 
 interface SharedText {
   id: string;
@@ -45,12 +37,12 @@ interface SharedText {
 }
 
 interface FileListProps {
-  files: SharedFile[];
-  texts?: SharedText[]; // Make texts optional
-  onDownload?: (file: SharedFile) => void;
-  onCopyText?: (text: SharedText) => void; // Add missing prop type
-  onDeleteFile?: (file: SharedFile) => void;
-  onDeleteAllFiles?: () => void; // Add handler for deleting all files
+  files: FileResponse[];
+  texts?: SharedText[]; 
+  onDownload?: (file: FileResponse) => void;
+  onCopyText?: (text: SharedText) => void; 
+  onDeleteFile?: (file: FileResponse) => void;
+  onDeleteAllFiles?: () => void; 
   isLoading?: boolean;
   onRefresh?: () => void;
 }
@@ -65,7 +57,6 @@ const FileList: React.FC<FileListProps> = ({
   isLoading = false,
   onRefresh,
 }) => {
-  // Format file size
   const formatSize = (bytes: number): string => {
     if (bytes === 0) return "0 Bytes";
     const k = 1024;
@@ -74,7 +65,6 @@ const FileList: React.FC<FileListProps> = ({
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
   };
 
-  // Format date
   const formatDate = (dateStr: string): string => {
     const options: Intl.DateTimeFormatOptions = {
       timeZone: "Asia/Kolkata",
@@ -89,7 +79,6 @@ const FileList: React.FC<FileListProps> = ({
     return date.toLocaleString("en-IN", options);
   };
 
-  // Calculate days remaining before file deletion
   const getDaysRemaining = (dateStr: string): number => {
     const uploadDate = new Date(dateStr);
     const currentDate = new Date();
@@ -101,7 +90,6 @@ const FileList: React.FC<FileListProps> = ({
     return timeDiff > 0 ? timeDiff : 0;
   };
 
-  // Get expiration message
   const getExpirationMessage = (
     dateStr: string,
   ): { message: string; className: string } => {
@@ -130,14 +118,12 @@ const FileList: React.FC<FileListProps> = ({
     }
   };
 
-  // Truncate text for preview
   const truncateText = (text: string, maxLength = 100): string => {
     if (text.length <= maxLength) return text;
     return text.substring(0, maxLength) + "...";
   };
 
-  // Handle file deletion
-  const handleDelete = async (file: SharedFile) => {
+  const handleDelete = async (file: FileResponse) => {
     if (!onDeleteFile) return;
 
     try {
@@ -151,14 +137,12 @@ const FileList: React.FC<FileListProps> = ({
     }
   };
 
-  // Handle file download
-  const handleDownload = (file: SharedFile) => {
+  const handleDownload = (file: FileResponse) => {
     if (onDownload) {
       onDownload(file);
     }
   };
 
-  // Handle text copy
   const handleCopyText = (text: SharedText) => {
     if (onCopyText) {
       onCopyText(text);
@@ -194,7 +178,6 @@ const FileList: React.FC<FileListProps> = ({
     }
   };
 
-  // Move hasSharedItems definition here, before it's used
   const hasSharedItems = files.length > 0 || (texts && texts.length > 0);
 
   return (
@@ -252,7 +235,11 @@ const FileList: React.FC<FileListProps> = ({
                       </AlertDialogHeader>
                       <AlertDialogFooter>
                         <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={onDeleteAllFiles}>
+                        <AlertDialogAction 
+                          onClick={onDeleteAllFiles}
+                          className="bg-destructive hover:bg-destructive/90"
+                          autoFocus
+                        >
                           Delete All
                         </AlertDialogAction>
                       </AlertDialogFooter>
