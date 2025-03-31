@@ -159,6 +159,22 @@ export const uploadFile = async (
     );
   }
 
+  // Check file size limit (50MB)
+  const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB in bytes
+  if (file.size > MAX_FILE_SIZE) {
+    throw new Error(
+      `File size exceeds the 50MB limit. Your file is ${(file.size / (1024 * 1024)).toFixed(2)}MB.`,
+    );
+  }
+
+  // Check file count limit (20 files per network/private space)
+  const existingFiles = await fetchSharedFiles(privateSpaceKey);
+  if (existingFiles.length >= 20) {
+    throw new Error(
+      "You've reached the maximum limit of 20 files. Please delete some files before uploading more.",
+    );
+  }
+
   // Sanitize file name to prevent issues
   const sanitizedFileName = sanitizeFileName(file.name);
   const uniqueFileName = `${Date.now()}_${sanitizedFileName}`;

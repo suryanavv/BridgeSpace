@@ -38,11 +38,11 @@ interface SharedText {
 
 interface FileListProps {
   files: FileResponse[];
-  texts?: SharedText[]; 
+  texts?: SharedText[];
   onDownload?: (file: FileResponse) => void;
-  onCopyText?: (text: SharedText) => void; 
+  onCopyText?: (text: SharedText) => void;
   onDeleteFile?: (file: FileResponse) => void;
-  onDeleteAllFiles?: () => void; 
+  onDeleteAllFiles?: () => void;
   isLoading?: boolean;
   onRefresh?: () => void;
 }
@@ -83,7 +83,7 @@ const FileList: React.FC<FileListProps> = ({
     const uploadDate = new Date(dateStr);
     const currentDate = new Date();
     const timeDiff =
-      7 -
+      2 -
       Math.floor(
         (currentDate.getTime() - uploadDate.getTime()) / (1000 * 3600 * 24),
       );
@@ -191,12 +191,17 @@ const FileList: React.FC<FileListProps> = ({
           <div className="bg-slate-100 dark:bg-slate-800 p-4 rounded-md animate-fade-in">
             <div className="flex justify-between items-center mb-3">
               <div className="flex items-center">
-                <Badge
-                  variant="outline"
-                  className="bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 border-green-300 dark:border-green-700"
-                >
-                  <LucideFileIcon className="h-3 w-3 mr-1" /> Shared Files
-                </Badge>
+                <div className="flex items-center gap-2">
+                  <Badge
+                    variant="outline"
+                    className="bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 border-green-300 dark:border-green-700"
+                  >
+                    <LucideFileIcon className="h-3 w-3 mr-1" /> Shared Files
+                  </Badge>
+                  <Badge variant="secondary" className="text-xs">
+                    {files.length} / 20
+                  </Badge>
+                </div>
               </div>
               <div className="flex gap-2">
                 {onRefresh && (
@@ -235,7 +240,7 @@ const FileList: React.FC<FileListProps> = ({
                       </AlertDialogHeader>
                       <AlertDialogFooter>
                         <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction 
+                        <AlertDialogAction
                           onClick={onDeleteAllFiles}
                           className="bg-destructive hover:bg-destructive/90"
                           autoFocus

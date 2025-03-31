@@ -100,29 +100,29 @@ BEGIN
 END;
 $$;
 
--- Create cleanup function that uses IST timezone
+-- Create cleanup function that uses IST timezone with 2-day expiration
 CREATE OR REPLACE FUNCTION cleanup_old_files()
 RETURNS void
 LANGUAGE plpgsql
 AS $$
 DECLARE
-  ist_cutoff_date TIMESTAMP;
+  cutoff_date TIMESTAMP WITH TIME ZONE;
   file_record RECORD;
   storage_path TEXT;
   deleted_count INTEGER := 0;
 BEGIN
-  -- Calculate the cutoff date in IST (7 days ago from IST midnight)
-  ist_cutoff_date := (CURRENT_TIMESTAMP AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Kolkata')::date - INTERVAL '7 days';
-  ist_cutoff_date := (ist_cutoff_date AT TIME ZONE 'Asia/Kolkata' AT TIME ZONE 'UTC');
+  -- Set cutoff date to 2 days ago in IST timezone
+  cutoff_date := (NOW() AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Kolkata') - INTERVAL '2 days';
+  cutoff_date := (cutoff_date AT TIME ZONE 'Asia/Kolkata' AT TIME ZONE 'UTC');
   
   -- Log the cutoff date for debugging
-  RAISE NOTICE 'Cleaning up files older than %', ist_cutoff_date;
+  RAISE NOTICE 'Cleaning up files older than %', cutoff_date;
   
   -- Find files older than the cutoff date
   FOR file_record IN 
     SELECT id, url, shared_at 
     FROM shared_files 
-    WHERE shared_at < ist_cutoff_date
+    WHERE shared_at < cutoff_date
   LOOP
     -- Try to extract the storage path from the URL
     BEGIN
@@ -142,13 +142,48 @@ BEGIN
   END LOOP;
   
   -- Also clean up old shared texts
-  DELETE FROM shared_texts WHERE shared_at < ist_cutoff_date;
+  DELETE FROM shared_texts WHERE shared_at < cutoff_date;
   
   -- Log the results
   RAISE NOTICE 'Cleanup completed. Deleted % files.', deleted_count;
   
   -- Return success
   RETURN;
+END;
+$$;
+
+-- Add file size and count limit functions
+CREATE OR REPLACE FUNCTION check_file_size_limit(size_in_bytes BIGINT)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  -- 50MB limit in bytes (50 * 1024 * 1024)
+  RETURN size_in_bytes <= 52428800;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION check_file_count_limit(network_prefix_val TEXT, private_space_key_val TEXT)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  file_count INTEGER;
+BEGIN
+  IF private_space_key_val IS NOT NULL THEN
+    -- Count files in private space
+    SELECT COUNT(*) INTO file_count
+    FROM public.shared_files
+    WHERE private_space_key = private_space_key_val;
+  ELSE
+    -- Count files for network prefix
+    SELECT COUNT(*) INTO file_count
+    FROM public.shared_files
+    WHERE network_prefix = network_prefix_val;
+  END IF;
+  
+  -- Return true if under limit (20 files)
+  RETURN file_count < 20;
 END;
 $$;
 

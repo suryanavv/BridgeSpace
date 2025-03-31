@@ -21,12 +21,12 @@ export default {
 			fontFamily: {
 				sans: [
 					"-apple-system",
-					"BlinkMacSystemFont",
-					"San Francisco",
-					"Segoe UI",
-					"Roboto",
-					"Helvetica Neue",
-					"sans-serif",
+					// "BlinkMacSystemFont",
+					// "San Francisco",
+					// "Segoe UI",
+					// "Roboto",
+					// "Helvetica Neue",
+					// "sans-serif",
 				],
 			},
 			colors: {

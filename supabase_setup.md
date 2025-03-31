@@ -29,10 +29,11 @@ Run the SQL commands from the `supabase_setup.sql` file in the SQL Editor in the
 
 - Tables: `network_connections`, `shared_texts`, `shared_files`
 - PostgreSQL functions: `get_storage_path_from_url`, `delete_shared_file_entry`, `cleanup_old_files` (configured to use IST timezone)
+- File limit functions: `check_file_size_limit`, `check_file_count_limit`
 - Row-Level Security policies
 - Scheduled jobs (configured to run at midnight IST, which is 18:30 UTC)
 
-Additionally, run the migration script `20240701000001_update_cleanup_function_to_ist.sql` to update the cleanup function to use IST timezone for determining which files to delete.
+Additionally, run the migration script `20240701000002_update_cleanup_and_limits.sql` to update the cleanup function to use a 2-day expiration period instead of 7 days, and to add the file size and count limit functions.
 
 ### 3. Storage Setup
 
@@ -101,7 +102,11 @@ VITE_SUPABASE_ANON_KEY=your-new-anon-key
 The application supports private spaces using a secret key. Files and texts can be shared within these private spaces, accessible only to users with the correct key.
 
 ### Automatic Cleanup
-A scheduled job runs daily at midnight IST (18:30 UTC) to clean up files and texts older than 7 days, preventing storage bloat. The cleanup function uses Indian Standard Time (IST) timezone for determining which files to delete.
+A scheduled job runs daily at midnight IST (18:30 UTC) to clean up files and texts older than 2 days, preventing storage bloat. The cleanup function uses Indian Standard Time (IST) timezone for determining which files to delete.
+
+### File Limits
+- Maximum file size: 50MB per file
+- Maximum number of files: 20 files per network or private space
 
 ### Network-Based Sharing
 Users on the same network can share files and texts without authentication, using their network prefix as an identifier.
