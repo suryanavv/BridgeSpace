@@ -20,7 +20,8 @@ export default {
 		extend: {
 			fontFamily: {
 				sans: [
-					"-apple-system",
+					"Geist Sans",
+					// "-apple-system",
 					// "BlinkMacSystemFont",
 					// "San Francisco",
 					// "Segoe UI",
