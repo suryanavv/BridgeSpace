@@ -11,6 +11,7 @@ The BridgeSpace application uses Supabase for:
 - PostgreSQL functions for file cleanup (using IST timezone)
 - Row-Level Security (RLS) policies
 - Scheduled jobs for maintenance (running at midnight IST)
+- Automatic cleanup of files older than 2 days
 
 All timestamps in the application are stored in Indian Standard Time (IST) with +05:30 timezone offset.
 
@@ -33,7 +34,9 @@ Run the SQL commands from the `supabase_setup.sql` file in the SQL Editor in the
 - Row-Level Security policies
 - Scheduled jobs (configured to run at midnight IST, which is 18:30 UTC)
 
-Additionally, run the migration script `20240701000002_update_cleanup_and_limits.sql` to update the cleanup function to use a 2-day expiration period instead of 7 days, and to add the file size and count limit functions.
+Additionally, run the migration scripts:
+- `20240701000002_update_cleanup_and_limits.sql` to update the cleanup function to use a 2-day expiration period instead of 7 days, and to add the file size and count limit functions.
+- `20240804000001_fix_cleanup_function_timezone.sql` and `20240804000002_fix_storage_delete_method.sql` to ensure proper timezone handling and storage object deletion in the cleanup function.
 
 ### 3. Storage Setup
 

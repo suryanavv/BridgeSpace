@@ -100,57 +100,56 @@ BEGIN
 END;
 $$;
 
--- Create cleanup function that uses IST timezone with 2-day expiration
+-- Create a function to clean up old files (older than 2 days)
 CREATE OR REPLACE FUNCTION cleanup_old_files()
-RETURNS void
-LANGUAGE plpgsql
-AS $$
+RETURNS void AS $$
 DECLARE
-  cutoff_date TIMESTAMP WITH TIME ZONE;
   file_record RECORD;
   storage_path TEXT;
-  deleted_count INTEGER := 0;
+  deletion_cutoff TIMESTAMP WITH TIME ZONE;
 BEGIN
-  -- Set cutoff date to 2 days ago in IST timezone
-  cutoff_date := (NOW() AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Kolkata') - INTERVAL '2 days';
-  cutoff_date := (cutoff_date AT TIME ZONE 'Asia/Kolkata' AT TIME ZONE 'UTC');
+  -- Set deletion cutoff to 2 days ago in IST timezone
+  deletion_cutoff := (NOW() AT TIME ZONE 'Asia/Kolkata') - INTERVAL '2 days';
   
-  -- Log the cutoff date for debugging
-  RAISE NOTICE 'Cleaning up files older than %', cutoff_date;
+  -- Log the cutoff time for debugging
+  RAISE NOTICE 'Deletion cutoff time (IST): %', deletion_cutoff;
   
-  -- Find files older than the cutoff date
+  -- Find files older than the cutoff
   FOR file_record IN 
     SELECT id, url, shared_at 
     FROM shared_files 
-    WHERE shared_at < cutoff_date
+    WHERE shared_at < deletion_cutoff
   LOOP
-    -- Try to extract the storage path from the URL
-    BEGIN
-      -- Extract the path after 'shared_files/'
-      storage_path := substring(file_record.url from '.*shared_files/(.*)$');
-      
-      IF storage_path IS NOT NULL THEN
-        -- Call the delete_shared_file_entry function to remove the file
-        PERFORM delete_shared_file_entry(file_record.url);
-        deleted_count := deleted_count + 1;
-      ELSE
-        RAISE NOTICE 'Could not extract storage path from URL: %', file_record.url;
-      END IF;
-    EXCEPTION WHEN OTHERS THEN
-      RAISE NOTICE 'Error processing file %: %', file_record.id, SQLERRM;
-    END;
+    -- Extract storage path from URL
+    storage_path := get_storage_path_from_url(file_record.url);
+    
+    -- Log file being processed
+    RAISE NOTICE 'Processing file: % (shared at: %) with path: %', 
+      file_record.id, file_record.shared_at, storage_path;
+    
+    -- Delete from storage bucket using storage.objects table
+    -- This is the correct way to delete objects in Supabase
+    DELETE FROM storage.objects 
+    WHERE bucket_id = 'shared_files' AND name = storage_path;
+    
+    -- Delete from database
+    DELETE FROM shared_files WHERE id = file_record.id;
+    
+    -- Log successful deletion
+    RAISE NOTICE 'Deleted file: % (shared at: %)', file_record.id, file_record.shared_at;
   END LOOP;
   
   -- Also clean up old shared texts
-  DELETE FROM shared_texts WHERE shared_at < cutoff_date;
+  DELETE FROM shared_texts 
+  WHERE shared_at < deletion_cutoff;
   
-  -- Log the results
-  RAISE NOTICE 'Cleanup completed. Deleted % files.', deleted_count;
+  -- Also clean up old network connections
+  DELETE FROM network_connections 
+  WHERE last_active < deletion_cutoff;
   
-  -- Return success
-  RETURN;
+  RAISE NOTICE 'Cleanup completed successfully';
 END;
-$$;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Add file size and count limit functions
 CREATE OR REPLACE FUNCTION check_file_size_limit(size_in_bytes BIGINT)
@@ -187,10 +186,10 @@ BEGIN
 END;
 $$;
 
--- Schedule the cleanup job to run at midnight IST (18:30 UTC)
+-- Schedule the cleanup function to run daily at midnight IST (18:30 UTC)
 SELECT cron.schedule(
   'cleanup-old-files-midnight-ist',
-  '30 18 * * *',  -- 18:30 UTC = 00:00 IST
+  '30 18 * * *',
   'SELECT cleanup_old_files()'
 );
 
