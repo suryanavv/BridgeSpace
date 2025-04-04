@@ -198,7 +198,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
   };
 
   return (
-    <div className="bg-slate-100 dark:bg-slate-800 p-4 rounded-md animate-fade-in">
+    <div className="bg-slate-100 dark:bg-slate-800 p-4 rounded-xl animate-fade-in">
       <div className="flex justify-between items-center mb-3">
         <div className="flex items-center">
           <Badge
@@ -219,15 +219,6 @@ const FileUpload: React.FC<FileUploadProps> = ({
             <X className="h-3.5 w-3.5" />
           </Button>
         )}
-      </div>
-
-      <div className="p-2 mb-3 bg-yellow-50 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-200 text-xs rounded">
-        <p className="font-medium">File Limits:</p>
-        <ul className="list-disc pl-5 mt-1 space-y-0.5">
-          <li>Maximum size: 50MB per file</li>
-          <li>Maximum files: 20 per network/space</li>
-          <li>Files auto-delete after 2 days</li>
-        </ul>
       </div>
 
       <label className="block w-full cursor-pointer">
@@ -278,11 +269,22 @@ const FileUpload: React.FC<FileUploadProps> = ({
         </div>
       </label>
 
+      <div className="p-2 mb-3 bg-yellow-50 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-200 text-xs rounded-md">
+        <p className="font-medium">File Limits:</p>
+        <ul className="list-disc pl-5 mt-1 space-y-0.5">
+          <li>Maximum size: 50MB per file</li>
+          <li>Maximum files: 20 per network/space</li>
+          <li>Files auto-delete after 2 days</li>
+        </ul>
+      </div>
+
       {!networkConnected && (
-        <div className="bg-yellow-50 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-200 text-xs p-2 rounded">
+        <div className="bg-yellow-50 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-200 text-xs p-2 rounded-md">
           Connect to a network or enter a private space to share files
         </div>
       )}
+
+      
     </div>
   );
 };

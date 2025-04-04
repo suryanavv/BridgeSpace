@@ -7,6 +7,56 @@
     <title>BridgeSpace</title>
     <meta name="description" content="A Content Sharing Platform" />
     <meta name="Naveen" content="" />
+    
+    <!-- Preload Geist Sans fonts with cache busting -->
+    <link rel="preload" href="/fonts/GeistSans-Regular.woff2?v=1.0.0" as="font" type="font/woff2" crossorigin="anonymous" />
+    <link rel="preload" href="/fonts/GeistSans-Medium.woff2?v=1.0.0" as="font" type="font/woff2" crossorigin="anonymous" />
+    <link rel="preload" href="/fonts/GeistSans-SemiBold.woff2?v=1.0.0" as="font" type="font/woff2" crossorigin="anonymous" />
+    <link rel="preload" href="/fonts/GeistSans-Bold.woff2?v=1.0.0" as="font" type="font/woff2" crossorigin="anonymous" />
+    
+    <!-- Font display CSS -->
+    <style>
+      /* Force font loading before any content is displayed */
+      html {
+        visibility: hidden;
+      }
+      html.fonts-loaded {
+        visibility: visible;
+      }
+    </style>
+    
+    <!-- Font loading script -->
+    <script>
+      // Font loading with timeout to prevent FOUT (Flash of Unstyled Text)
+      document.addEventListener('DOMContentLoaded', function() {
+        // Create a random cache-busting parameter
+        const cacheBuster = `?v=1.0.0-${Date.now()}`;
+        
+        // Use FontFace API to load Gilroy fonts
+        Promise.all([
+          new FontFace('Gilroy', 'url(/fonts/gilroy/Gilroy-Regular.ttf)', {weight: '400'}),
+          new FontFace('Gilroy', 'url(/fonts/gilroy/Gilroy-Medium.ttf)', {weight: '500'}),
+          new FontFace('Gilroy', 'url(/fonts/gilroy/Gilroy-SemiBold.ttf)', {weight: '600'}),
+          new FontFace('Gilroy', 'url(/fonts/gilroy/Gilroy-Bold.ttf)', {weight: '700'})
+        ].map(font => 
+          font.load().then(loadedFont => {
+            document.fonts.add(loadedFont);
+            return loadedFont;
+          })
+        )).then(() => {
+          document.documentElement.classList.add('fonts-loaded');
+        }).catch(error => {
+          console.error('Font loading failed:', error);
+          // Show content anyway after error
+          document.documentElement.classList.add('fonts-loaded');
+        });
+        
+        // Timeout to ensure content is shown even if fonts fail to load
+        setTimeout(() => {
+          document.documentElement.classList.add('fonts-loaded');
+        }, 2000);
+      });
+    </script>
   </head>
 
   <body>

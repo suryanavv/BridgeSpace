@@ -122,7 +122,7 @@ const TextShare: React.FC<TextShareProps> = ({ networkConnected, onTextShared, p
   }, [networkConnected, debouncedSave, privateSpaceKey]);
 
   return (
-    <div className="bg-slate-100 dark:bg-slate-800 p-4 rounded-md animate-fade-in">
+    <div className="bg-slate-100 dark:bg-slate-800 p-4 rounded-xl animate-fade-in">
       <div className="flex justify-between items-center mb-3">
         <div className="flex items-center">
           <Badge variant="outline" className="bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200 border-purple-300 dark:border-purple-700">

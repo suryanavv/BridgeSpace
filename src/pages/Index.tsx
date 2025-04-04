@@ -376,7 +376,7 @@ const Index: React.FC = () => {
         </div>
 
         <AlertDialog open={showPrivateSpaceModal} onOpenChange={setShowPrivateSpaceModal}>
-          <AlertDialogContent>
+          <AlertDialogContent className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 max-h-[90vh] w-[90vw] md:w-full overflow-y-auto">
             <AlertDialogHeader>
               <AlertDialogTitle>Enter Private Space Key</AlertDialogTitle>
               <AlertDialogDescription>
@@ -408,11 +408,11 @@ const Index: React.FC = () => {
         </AlertDialog>
 
         <Tabs defaultValue="file" className="w-full mt-6">
-          <TabsList className="grid w-full grid-cols-2 bg-slate-200 dark:bg-slate-700 p-1 rounded-md">
-            <TabsTrigger value="file" className="rounded-sm data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:text-primary">
+          <TabsList className="grid w-full grid-cols-2 bg-slate-100 p-1 rounded-lg border border-slate-200 mb-6 max-w-md mx-auto">
+            <TabsTrigger value="file" className="rounded-md data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:text-primary">
               <Upload className="h-4 w-4 mr-2" /> File
             </TabsTrigger>
-            <TabsTrigger value="text" className="rounded-sm data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:text-primary">
+            <TabsTrigger value="text" className="rounded-md data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:text-primary">
               <FileText className="h-4 w-4 mr-2" /> Text
             </TabsTrigger>
           </TabsList>

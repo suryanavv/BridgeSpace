@@ -29,9 +29,7 @@ const NetworkStatus: React.FC<NetworkStatusProps> = ({
   const checkNetwork = async () => {
     try {
       setStatus('checking');
-      if (isRefreshing) {
-        setIsRefreshing(true);
-      }
+      setIsRefreshing(true);
       
       const clientIP = await getClientIP();
       // Use the cached network prefix if available, otherwise calculate it
@@ -77,9 +75,15 @@ const NetworkStatus: React.FC<NetworkStatusProps> = ({
     return () => {};
   }, [onNetworkChange]);
 
-  const handleRefresh = () => {
+  const handleRefresh = async () => {
     setIsRefreshing(true);
-    checkNetwork();
+    
+    // Add a small delay to ensure the animation is visible
+    // even if the network check is very fast
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    await checkNetwork();
+    
     // Call the onRefresh callback to fetch updated files/texts
     if (onRefresh) {
       onRefresh();
@@ -95,7 +99,7 @@ const NetworkStatus: React.FC<NetworkStatusProps> = ({
   };
 
   return (
-    <div className="bg-slate-100 dark:bg-slate-800 p-3 rounded-md text-sm animate-fade-in w-full">
+    <div className="bg-slate-100 dark:bg-slate-800 p-3 rounded-xl text-sm animate-fade-in w-full">
       {isPrivateSpace ? (
         <div className="flex flex-col space-y-2">
           <div className="flex justify-between items-center">

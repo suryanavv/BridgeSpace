@@ -188,7 +188,7 @@ const FileList: React.FC<FileListProps> = ({
         </div>
       ) : (
         <div>
-          <div className="bg-slate-100 dark:bg-slate-800 p-4 rounded-md animate-fade-in">
+          <div className="bg-slate-100 dark:bg-slate-800 p-4 rounded-xl animate-fade-in">
             <div className="flex justify-between items-center mb-3">
               <div className="flex items-center">
                 <div className="flex items-center gap-2">
@@ -262,7 +262,7 @@ const FileList: React.FC<FileListProps> = ({
                 files.map((file) => (
                   <div
                     key={file.id}
-                    className="flex items-center p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-md hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                    className="flex items-center p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
                   >
                     <div className="mr-3 text-slate-400 dark:text-slate-500">
                       {getFileIcon(file.type)}
