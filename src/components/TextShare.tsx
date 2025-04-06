@@ -20,7 +20,7 @@ const TextShare: React.FC<TextShareProps> = ({ networkConnected, onTextShared, p
   const [lastSavedContent, setLastSavedContent] = useState('');
   const [autoSaveStatus, setAutoSaveStatus] = useState<'saved' | 'saving' | 'unsaved'>('saved');
   const saveInProgress = useRef(false);
-  const maxLength = 5000;
+  const maxLength = 20000;
 
   // Create memoized save function
   const saveContent = useCallback(async (newContent: string) => {
