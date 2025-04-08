@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Loader2 } from "lucide-react";
+import JSZip from "jszip";
 import {
   FileIcon,
   ImageIcon,
@@ -143,6 +144,84 @@ const FileList: React.FC<FileListProps> = ({
     }
   };
 
+  const handleDownloadAll = async () => {
+    if (files.length === 0) return;
+    
+    try {
+      // Show loading toast with an ID so we can dismiss it later
+      const loadingToastId = toast.loading("Preparing ZIP file...");
+      
+      // Create a new JSZip instance
+      const zip = new JSZip();
+      
+      // Create a folder for the files
+      const folder = zip.folder("BridgeSpace_Files");
+      if (!folder) throw new Error("Failed to create folder in ZIP");
+      
+      // Add each file to the ZIP
+      const filePromises = files.map(async (file) => {
+        // If onDownload exists, it means we can access the file URL
+        if (onDownload) {
+          try {
+            // Get file data from URL
+            const response = await fetch(file.url);
+            if (!response.ok) throw new Error(`Failed to fetch ${file.name}`);
+            
+            const blob = await response.blob();
+            
+            // Use original file name, handle duplicates by adding file id
+            const fileName = file.name;
+            
+            // Add file to ZIP
+            folder.file(fileName, blob);
+            
+            return true;
+          } catch (error) {
+            console.error(`Error adding ${file.name} to ZIP:`, error);
+            return false;
+          }
+        }
+        return false;
+      });
+      
+      // Wait for all files to be added
+      await Promise.all(filePromises);
+      
+      // Generate ZIP file
+      const zipBlob = await zip.generateAsync({ type: "blob" });
+      
+      // Create download link
+      const downloadLink = document.createElement("a");
+      downloadLink.href = URL.createObjectURL(zipBlob);
+      downloadLink.download = `BridgeSpace_Files_${new Date().toISOString().slice(0, 10)}.zip`;
+      
+      // Trigger download
+      document.body.appendChild(downloadLink);
+      downloadLink.click();
+      document.body.removeChild(downloadLink);
+      
+      // Clean up object URL
+      URL.revokeObjectURL(downloadLink.href);
+      
+      // Dismiss the loading toast
+      toast.dismiss(loadingToastId);
+      
+      // Show success toast
+      toast.success("ZIP file ready", {
+        description: `Downloaded ${files.length} files as ZIP`,
+      });
+    } catch (error) {
+      console.error("Error creating ZIP file:", error);
+      
+      // Dismiss the loading toast in case of error too
+      toast.dismiss();
+      
+      toast.error("Download failed", {
+        description: "Failed to create ZIP file. Please try downloading files individually.",
+      });
+    }
+  };
+
   const handleCopyText = (text: SharedText) => {
     if (onCopyText) {
       onCopyText(text);
@@ -191,19 +270,17 @@ const FileList: React.FC<FileListProps> = ({
           <div className="bg-slate-100 dark:bg-slate-800 p-4 rounded-xl animate-fade-in">
             <div className="flex justify-between items-center mb-3">
               <div className="flex items-center">
-                <div className="flex items-center gap-2">
-                  <Badge
-                    variant="outline"
-                    className="bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 border-green-300 dark:border-green-700"
-                  >
-                    <LucideFileIcon className="h-3 w-3 mr-1" /> Shared Files
-                  </Badge>
-                  <Badge variant="secondary" className="text-xs">
-                    {files.length} / 20
-                  </Badge>
-                </div>
+                <Badge
+                  variant="outline"
+                  className="bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 border-green-300 dark:border-green-700"
+                >
+                  <LucideFileIcon className="h-3 w-3 mr-1" /> Shared Files
+                </Badge>
+                <Badge variant="secondary" className="text-xs">
+                  {files.length} / 20
+                </Badge>
               </div>
-              <div className="flex gap-2">
+              <div className="flex gap-1">
                 {onRefresh && (
                   <Button
                     size="sm"
@@ -215,41 +292,57 @@ const FileList: React.FC<FileListProps> = ({
                     <RefreshCw className="h-3.5 w-3.5" />
                   </Button>
                 )}
-                {files.length > 0 && onDeleteAllFiles && (
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="p-2 h-7 flex items-center justify-center gap-1"
-                        title="Delete all files"
-                      >
-                        <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                        <span className="text-xs text-destructive">
-                          Delete All
-                        </span>
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Delete all files?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          This action cannot be undone. All shared files will be
-                          permanently deleted.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction
-                          onClick={onDeleteAllFiles}
-                          className="bg-destructive hover:bg-destructive/90"
-                          autoFocus
-                        >
-                          Delete All
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
+                {files.length > 0 && (
+                  <>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={handleDownloadAll}
+                      className="p-2 h-7 flex items-center justify-center gap-1"
+                      title="Download all files"
+                    >
+                      <Download className="h-3.5 w-3.5" />
+                      <span className="text-xs">
+                        Download All
+                      </span>
+                    </Button>
+                    {onDeleteAllFiles && (
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="p-2 h-7 flex items-center justify-center gap-1"
+                            title="Delete all files"
+                          >
+                            <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                            <span className="text-xs text-destructive">
+                              Delete All
+                            </span>
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Delete all files?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              This action cannot be undone. All shared files will
+                              be permanently deleted.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={onDeleteAllFiles}
+                              className="bg-destructive hover:bg-destructive/90"
+                              autoFocus
+                            >
+                              Delete All
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    )}
+                  </>
                 )}
               </div>
             </div>

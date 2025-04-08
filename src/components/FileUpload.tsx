@@ -208,17 +208,6 @@ const FileUpload: React.FC<FileUploadProps> = ({
             <File className="h-3 w-3 mr-1" /> Share Files
           </Badge>
         </div>
-        {isUploading && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleCancelUpload}
-            disabled={cancelUpload}
-            className="p-1 h-7 w-7 flex items-center justify-center"
-          >
-            <X className="h-3.5 w-3.5" />
-          </Button>
-        )}
       </div>
 
       <label className="block w-full cursor-pointer">
@@ -246,9 +235,21 @@ const FileUpload: React.FC<FileUploadProps> = ({
                 <div className="w-full max-w-xs mb-2">
                   <Progress value={uploadProgress} className="h-2" />
                 </div>
-                <p className="text-xs text-muted-foreground text-center">
+                <p className="text-xs text-muted-foreground text-center mb-3">
                   {Math.round(uploadProgress)}% complete
                 </p>
+                {isUploading && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleCancelUpload}
+                    disabled={cancelUpload}
+                    className="flex items-center justify-center gap-1"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                    <span>Cancel Upload</span>
+                  </Button>
+                )}
               </>
             ) : (
               <>
@@ -283,8 +284,6 @@ const FileUpload: React.FC<FileUploadProps> = ({
           Connect to a network or enter a private space to share files
         </div>
       )}
-
-      
     </div>
   );
 };
