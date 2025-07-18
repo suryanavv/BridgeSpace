@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Header from "@/components/Header";
 import NetworkStatus from "@/components/NetworkStatus";
 import FileUpload from "@/components/FileUpload";
@@ -52,6 +52,10 @@ const Index: React.FC = () => {
   const [sharedFiles, setSharedFiles] = useState<FileResponse[]>([]);
   const [sharedTexts, setSharedTexts] = useState<SharedText[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Active tab state
+  const [activeTab, setActiveTab] = useState("file");
+  const fileUploadRef = useRef<{ uploadFromPaste: (files: File[]) => void } | null>(null);
 
   // Fetch shared items from database
   const fetchSharedItems = async () => {
@@ -220,6 +224,22 @@ const Index: React.FC = () => {
       channel.unsubscribe();
     };
   }, [networkConnected, networkPrefix, isPrivateSpace, privateSpaceKey]);
+
+  // Global paste handler for files/images/PDFs
+  useEffect(() => {
+    if (activeTab !== "file") return;
+    const handlePaste = (e: ClipboardEvent) => {
+      if (e.clipboardData && e.clipboardData.files && e.clipboardData.files.length > 0) {
+        e.preventDefault();
+        const fileList = Array.from(e.clipboardData.files);
+        if (fileUploadRef.current && fileUploadRef.current.uploadFromPaste) {
+          fileUploadRef.current.uploadFromPaste(fileList);
+        }
+      }
+    };
+    document.addEventListener("paste", handlePaste);
+    return () => document.removeEventListener("paste", handlePaste);
+  }, [activeTab]);
 
   const getStoragePathFromUrl = (url: string): string => {
     try {
@@ -407,7 +427,7 @@ const Index: React.FC = () => {
           </AlertDialogContent>
         </AlertDialog>
 
-        <Tabs defaultValue="file" className="w-full mt-6">
+        <Tabs defaultValue="file" value={activeTab} onValueChange={setActiveTab} className="w-full mt-6">
           <TabsList className="grid w-full grid-cols-2 bg-slate-100 p-1 rounded-lg border border-slate-200 mb-6 max-w-md mx-auto">
             <TabsTrigger value="file" className="rounded-md data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:text-primary">
               <Upload className="h-4 w-4 mr-2" /> File
@@ -418,9 +438,11 @@ const Index: React.FC = () => {
           </TabsList>
           <TabsContent value="file" className="mt-4 space-y-6">
             <FileUpload
+              ref={fileUploadRef}
               networkConnected={networkConnected || isPrivateSpace}
               onFilesUploaded={handleFilesUploaded}
               privateSpaceKey={isPrivateSpace ? privateSpaceKey : undefined}
+              showPasteInfo={true}
             />
             <FileList
               files={sharedFiles}
